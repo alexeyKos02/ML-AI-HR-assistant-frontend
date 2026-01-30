@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, createWebHashHistory} from 'vue-router'
+import { createRouter, createWebHashHistory} from 'vue-router'
 import VacanciesBoardView from '@/views/VacanciesBoardView.vue'
 import VacancyScreenView from '@/views/VacancyScreenView.vue'
 import CandidateProfileView from '@/views/CandidateProfileView.vue'
