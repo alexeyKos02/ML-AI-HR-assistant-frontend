@@ -6,6 +6,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   base: '/ML-AI-HR-assistant-frontend/',
   plugins: [vue()],
+  build: { outDir: 'docs' },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
