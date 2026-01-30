@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: 'ML-AI-HR-assistant-frontend',
   plugins: [vue()],
   resolve: {
     alias: {
