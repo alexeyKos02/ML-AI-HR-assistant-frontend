@@ -1,10 +1,10 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory} from 'vue-router'
 import VacanciesBoardView from '@/views/VacanciesBoardView.vue'
 import VacancyScreenView from '@/views/VacancyScreenView.vue'
 import CandidateProfileView from '@/views/CandidateProfileView.vue'
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes: [
     { path: '/', redirect: '/vacancies' },
 
