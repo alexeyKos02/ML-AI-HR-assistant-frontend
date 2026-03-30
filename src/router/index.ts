@@ -1,24 +1,14 @@
-import { createRouter, createWebHashHistory} from 'vue-router'
-import VacanciesBoardView from '@/views/VacanciesBoardView.vue'
-import VacancyScreenView from '@/views/VacancyScreenView.vue'
-import CandidateProfileView from '@/views/CandidateProfileView.vue'
+import { createRouter, createWebHashHistory } from 'vue-router'
+import WorkspaceView from '@/views/WorkspaceView.vue'
+import RankingView from '@/views/RankingView.vue'
+import EvaluationView from '@/views/EvaluationView.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', redirect: '/vacancies' },
-
-    // 1) Экран выбора вакансии + top-10
-    { path: '/vacancies', name: 'vacancies', component: VacanciesBoardView },
-
-    // 2) Full-screen экран вакансии + расширенный список кандидатов
-    { path: '/vacancies/:vacancyId', name: 'vacancy', component: VacancyScreenView },
-
-    // 4) Детальный профиль кандидата под конкретную вакансию (для AI-оценки именно “под вакансию”)
-    {
-      path: '/vacancies/:vacancyId/candidates/:candidateId',
-      name: 'candidate',
-      component: CandidateProfileView,
-    },
+    { path: '/', redirect: '/workspace' },
+    { path: '/workspace', name: 'workspace', component: WorkspaceView },
+    { path: '/ranking', name: 'ranking', component: RankingView },
+    { path: '/evaluate/:candidateId', name: 'evaluate', component: EvaluationView },
   ],
 })

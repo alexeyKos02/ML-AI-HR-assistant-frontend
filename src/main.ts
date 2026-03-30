@@ -4,6 +4,7 @@ import { router } from './router'
 
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
+import Tooltip from 'primevue/tooltip'
 
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
@@ -20,4 +21,5 @@ createApp(App)
             },
         },
     })
+    .directive('tooltip', Tooltip)
     .mount('#app')
