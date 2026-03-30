@@ -1,102 +1,38 @@
-import type { Vacancy } from '@/types/vacancy'
-import type { Candidate, AiCandidateEvaluation } from '@/types/candidate'
-import { vacanciesMock, candidatesMock, aiByVacancyCandidateMock } from '@/mock/hr.mock'
+import type { EvaluationResult, RankResult, UploadResponse } from '@/types'
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000'
 
-export async function getVacancies(): Promise<Vacancy[]> {
-    await delay(120)
-    return vacanciesMock
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, init)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`${res.status}: ${text || res.statusText}`)
+  }
+  return res.json() as Promise<T>
 }
 
-export async function getVacancyById(vacancyId: string): Promise<Vacancy | null> {
-    await delay(120)
-    return vacanciesMock.find((v) => v.id === vacancyId) ?? null
+export async function uploadResume(file: File): Promise<UploadResponse> {
+  const form = new FormData()
+  form.append('file', file)
+  return request<UploadResponse>('/api/upload', { method: 'POST', body: form })
 }
 
-export async function getTopCandidatesForVacancy(vacancyId: string): Promise<Array<{ candidate: Candidate; ai: AiCandidateEvaluation }>> {
-    await delay(160)
-
-    const aiMap = aiByVacancyCandidateMock[vacancyId] ?? {}
-    // На моках: берём всех, сортируем по overallScore, режем top-10
-    return candidatesMock
-        .map((c) => ({ candidate: c, ai: aiMap[c.id] }))
-        .filter((x): x is { candidate: Candidate; ai: AiCandidateEvaluation } => Boolean(x.ai))
-        .sort((a, b) => b.ai.overallScore - a.ai.overallScore)
-        .slice(0, 10)
+export async function evaluateCandidate(candidateId: string, role: string): Promise<EvaluationResult> {
+  return request<EvaluationResult>('/api/evaluate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ candidate_id: candidateId, role }),
+  })
 }
 
-export async function getCandidatesForVacancy(vacancyId: string): Promise<Array<{ candidate: Candidate; ai: AiCandidateEvaluation }>> {
-    // сейчас то же, что top — потом будет пагинация/поиск
-    return getTopCandidatesForVacancy(vacancyId)
+export async function rankCandidates(role: string, candidateIds: string[]): Promise<RankResult[]> {
+  return request<RankResult[]>('/api/rank', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role, candidate_ids: candidateIds }),
+  })
 }
 
-export async function getCandidateById(candidateId: string): Promise<Candidate | null> {
-    await delay(120)
-    return candidatesMock.find((c) => c.id === candidateId) ?? null
-}
-
-export async function getAiEvaluation(vacancyId: string, candidateId: string): Promise<AiCandidateEvaluation | null> {
-    await delay(120)
-    return aiByVacancyCandidateMock[vacancyId]?.[candidateId] ?? null
-}
-
-export type CandidatesQuery = {
-    q?: string
-    minScore?: number
-    skills?: string[]
-}
-
-export type CandidatesPage = {
-    items: Array<{ candidate: Candidate; ai: AiCandidateEvaluation }>
-    hasMore: boolean
-    nextOffset: number
-}
-
-export async function getCandidatesForVacancyPage(
-    vacancyId: string,
-    offset: number,
-    limit: number,
-    query: CandidatesQuery,
-): Promise<CandidatesPage> {
-    await delay(180)
-
-    const aiMap = aiByVacancyCandidateMock[vacancyId] ?? {}
-
-    const base = candidatesMock
-        .map((c) => ({ candidate: c, ai: aiMap[c.id] }))
-        .filter((x): x is { candidate: Candidate; ai: AiCandidateEvaluation } => Boolean(x.ai))
-        .sort((a, b) => b.ai.overallScore - a.ai.overallScore)
-
-    const q = (query.q ?? '').trim().toLowerCase()
-    const minScore = query.minScore ?? 0
-    const skills = (query.skills ?? []).map((s) => s.toLowerCase())
-
-    const filtered = base.filter((x) => {
-        if (x.ai.overallScore < minScore) return false
-
-        if (skills.length) {
-            const candidateSkills = x.candidate.resume.keySkills.map((s) => s.toLowerCase())
-            const hasAnySkill = skills.some((s) => candidateSkills.includes(s))
-            if (!hasAnySkill) return false
-        }
-
-        if (!q) return true
-
-        const fullName = `${x.candidate.firstName} ${x.candidate.lastName}`.toLowerCase()
-        const inCompanies = x.candidate.resume.workHistory.some((w) => w.company.toLowerCase().includes(q))
-        const inRoles = x.candidate.resume.workHistory.some((w) => w.role.toLowerCase().includes(q))
-        const inSkills = x.candidate.resume.keySkills.some((s) => s.toLowerCase().includes(q))
-
-        return fullName.includes(q) || inCompanies || inRoles || inSkills
-    })
-
-    const pageItems = filtered.slice(offset, offset + limit)
-    const nextOffset = offset + pageItems.length
-
-    return {
-        items: pageItems,
-        hasMore: nextOffset < filtered.length,
-        nextOffset,
-    }
+export async function healthCheck(): Promise<{ api: string; redis: string }> {
+  return request<{ api: string; redis: string }>('/api/health')
 }

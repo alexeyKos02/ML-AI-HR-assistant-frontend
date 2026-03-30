@@ -1,0 +1,404 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import Button from 'primevue/button'
+import Card from 'primevue/card'
+import InputText from 'primevue/inputtext'
+import ProgressBar from 'primevue/progressbar'
+import { useCandidates } from '@/composables/useCandidates'
+import { uploadResume } from '@/api/hrApi'
+import type { StoredCandidate } from '@/types'
+
+const router = useRouter()
+const { candidates, role, addCandidate, removeCandidate } = useCandidates()
+
+interface UploadItem {
+  name: string
+  status: 'uploading' | 'error'
+  error?: string
+}
+
+const uploading = ref<UploadItem[]>([])
+const isDragging = ref(false)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const canRank = computed(() => role.value.trim().length > 0 && candidates.value.length >= 1)
+
+async function handleFiles(files: FileList | File[]) {
+  const pdfs = Array.from(files).filter((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'))
+  if (!pdfs.length) return
+
+  const items: UploadItem[] = pdfs.map((f) => ({ name: f.name, status: 'uploading' }))
+  uploading.value.push(...items)
+
+  await Promise.all(
+    pdfs.map(async (file, i) => {
+      const item = items[i]!
+      try {
+        const res = await uploadResume(file)
+        const candidate: StoredCandidate = {
+          id: res.candidate_id,
+          filename: file.name,
+          uploadedAt: new Date().toISOString(),
+        }
+        addCandidate(candidate)
+        uploading.value = uploading.value.filter((u) => u !== item)
+      } catch (e) {
+        item.status = 'error'
+        item.error = e instanceof Error ? e.message : 'Upload failed'
+        setTimeout(() => {
+          uploading.value = uploading.value.filter((u) => u !== item)
+        }, 4000)
+      }
+    }),
+  )
+}
+
+function onDrop(e: DragEvent) {
+  isDragging.value = false
+  if (e.dataTransfer?.files) handleFiles(e.dataTransfer.files)
+}
+
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files) handleFiles(input.files)
+  input.value = ''
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function goToEvaluate(id: string) {
+  router.push({ name: 'evaluate', params: { candidateId: id } })
+}
+
+function goToRanking() {
+  router.push({ name: 'ranking' })
+}
+</script>
+
+<template>
+  <div class="workspace">
+    <!-- Left: setup -->
+    <div class="workspace__left">
+      <Card>
+        <template #title>
+          <div class="panel-title">
+            <i class="pi pi-briefcase" />
+            <span>Screening Setup</span>
+          </div>
+        </template>
+        <template #content>
+          <div class="field">
+            <label class="field-label">Role / Position</label>
+            <InputText
+              v-model="role"
+              placeholder="e.g. Frontend Developer"
+              class="w-full"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field-label">Upload Resumes</label>
+            <div
+              class="upload-zone"
+              :class="{ 'upload-zone--drag': isDragging }"
+              @dragover.prevent="isDragging = true"
+              @dragleave.prevent="isDragging = false"
+              @drop.prevent="onDrop"
+              @click="fileInputRef?.click()"
+            >
+              <i class="pi pi-cloud-upload upload-zone__icon" />
+              <span class="upload-zone__text">
+                Drop PDF files here or <span class="upload-zone__link">browse</span>
+              </span>
+              <span class="upload-zone__hint">PDF only · multiple files supported</span>
+              <input
+                ref="fileInputRef"
+                type="file"
+                accept=".pdf,application/pdf"
+                multiple
+                hidden
+                @change="onFileChange"
+              />
+            </div>
+          </div>
+
+          <div v-if="uploading.length" class="upload-queue">
+            <div
+              v-for="item in uploading"
+              :key="item.name"
+              class="upload-queue__item"
+              :class="{ 'upload-queue__item--error': item.status === 'error' }"
+            >
+              <i :class="item.status === 'error' ? 'pi pi-times-circle' : 'pi pi-file-pdf'" />
+              <span class="upload-queue__name">{{ item.name }}</span>
+              <ProgressBar
+                v-if="item.status === 'uploading'"
+                mode="indeterminate"
+                class="upload-queue__bar"
+              />
+              <span v-else class="upload-queue__error">{{ item.error }}</span>
+            </div>
+          </div>
+        </template>
+      </Card>
+    </div>
+
+    <!-- Right: candidates -->
+    <div class="workspace__right">
+      <Card>
+        <template #title>
+          <div class="panel-title panel-title--spread">
+            <div class="panel-title">
+              <i class="pi pi-users" />
+              <span>Candidates</span>
+              <span v-if="candidates.length" class="count-badge">{{ candidates.length }}</span>
+            </div>
+            <Button
+              label="Rank All"
+              icon="pi pi-sort-amount-down"
+              size="small"
+              :disabled="!canRank"
+              v-tooltip.left="!role.trim() ? 'Enter a role first' : !candidates.length ? 'Upload at least one resume' : ''"
+              @click="goToRanking"
+            />
+          </div>
+        </template>
+        <template #content>
+          <div v-if="!candidates.length" class="empty-state">
+            <i class="pi pi-inbox empty-state__icon" />
+            <span>Upload resumes to get started</span>
+          </div>
+
+          <div v-else class="candidate-list">
+            <div v-for="c in candidates" :key="c.id" class="candidate-row">
+              <i class="pi pi-file-pdf candidate-row__icon" />
+              <div class="candidate-row__info">
+                <span class="candidate-row__name" :title="c.filename">{{ c.filename }}</span>
+                <span class="candidate-row__date">{{ formatDate(c.uploadedAt) }}</span>
+              </div>
+              <div class="candidate-row__actions">
+                <Button
+                  v-tooltip.top="role.trim() ? 'Evaluate this candidate' : 'Enter a role first'"
+                  icon="pi pi-chart-bar"
+                  text
+                  rounded
+                  size="small"
+                  :disabled="!role.trim()"
+                  @click="goToEvaluate(c.id)"
+                />
+                <Button
+                  v-tooltip.top="'Remove'"
+                  icon="pi pi-trash"
+                  text
+                  rounded
+                  size="small"
+                  severity="danger"
+                  @click="removeCandidate(c.id)"
+                />
+              </div>
+            </div>
+          </div>
+        </template>
+      </Card>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.workspace {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 820px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.panel-title--spread {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.count-badge {
+  background: var(--app-accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 1px 7px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.field {
+  margin-bottom: 20px;
+}
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-color-secondary);
+  margin-bottom: 8px;
+}
+
+/* Upload zone */
+.upload-zone {
+  border: 2px dashed var(--surface-border);
+  border-radius: var(--app-radius-sm);
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.upload-zone:hover,
+.upload-zone--drag {
+  border-color: var(--app-accent);
+  background: rgba(37, 99, 235, 0.04);
+}
+.upload-zone__icon {
+  font-size: 30px;
+  color: var(--text-color-secondary);
+  margin-bottom: 4px;
+  transition: color 150ms;
+}
+.upload-zone--drag .upload-zone__icon,
+.upload-zone:hover .upload-zone__icon {
+  color: var(--app-accent);
+}
+.upload-zone__text {
+  font-size: 14px;
+  color: var(--text-color-secondary);
+}
+.upload-zone__link {
+  color: var(--app-accent);
+  font-weight: 600;
+}
+.upload-zone__hint {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  opacity: 0.6;
+}
+
+/* Upload queue */
+.upload-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.upload-queue__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(37, 99, 235, 0.06);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.upload-queue__item--error {
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+}
+.upload-queue__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upload-queue__bar {
+  width: 80px;
+  flex-shrink: 0;
+}
+.upload-queue__error {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 20px;
+  color: var(--text-color-secondary);
+  font-size: 14px;
+}
+.empty-state__icon {
+  font-size: 40px;
+  opacity: 0.35;
+}
+
+/* Candidate list */
+.candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+.candidate-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  transition: background 120ms;
+}
+.candidate-row:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+.candidate-row__icon {
+  color: #e74c3c;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.candidate-row__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.candidate-row__name {
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.candidate-row__date {
+  font-size: 11px;
+  color: var(--text-color-secondary);
+}
+.candidate-row__actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+</style>
