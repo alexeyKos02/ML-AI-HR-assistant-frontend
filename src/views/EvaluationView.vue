@@ -6,7 +6,7 @@ import Card from 'primevue/card'
 import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useCandidates } from '@/composables/useCandidates'
-import { evaluateCandidate } from '@/api/hrApi'
+import { evaluateCandidate, getVacancy } from '@/api/hrApi'
 import type { EvaluationResult } from '@/types'
 
 const route = useRoute()
@@ -21,6 +21,7 @@ const filename = computed(
 const loading = ref(true)
 const error = ref('')
 const evaluation = ref<EvaluationResult>({})
+const evalLabel = ref('')
 
 const sortedSkills = computed(() =>
   Object.entries(evaluation.value).sort(([, a], [, b]) => b - a),
@@ -45,12 +46,27 @@ function scoreLabel(score: number): string {
 }
 
 onMounted(async () => {
-  if (!role.value || !candidateId.value) {
+  if (!candidateId.value) {
     router.replace({ name: 'workspace' })
     return
   }
+
+  let effectiveRole = role.value
+  if (!effectiveRole) {
+    const vacancyRes = await getVacancy()
+    if (vacancyRes.vacancy) {
+      effectiveRole = vacancyRes.vacancy.filename.replace('.pdf', '')
+      evalLabel.value = vacancyRes.vacancy.filename
+    } else {
+      router.replace({ name: 'workspace' })
+      return
+    }
+  } else {
+    evalLabel.value = effectiveRole
+  }
+
   try {
-    evaluation.value = await evaluateCandidate(candidateId.value, role.value)
+    evaluation.value = await evaluateCandidate(candidateId.value, effectiveRole)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Evaluation failed'
   } finally {
@@ -65,7 +81,7 @@ onMounted(async () => {
       <Button icon="pi pi-arrow-left" text label="Back" @click="router.back()" />
       <div class="page-header__info">
         <h1 class="page-title" :title="filename">{{ filename }}</h1>
-        <p class="page-subtitle">Role: <strong>{{ role }}</strong></p>
+        <p class="page-subtitle">Role: <strong>{{ evalLabel }}</strong></p>
       </div>
     </div>
 

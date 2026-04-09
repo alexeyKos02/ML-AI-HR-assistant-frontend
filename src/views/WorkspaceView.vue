@@ -240,12 +240,12 @@ function goToRanking() {
               </div>
               <div class="candidate-row__actions">
                 <Button
-                  v-tooltip.top="role.trim() ? 'Evaluate this candidate' : 'Enter a role first'"
+                  v-tooltip.top="role.trim() || hasVacancy ? 'Evaluate this candidate' : 'Enter a role or upload a vacancy first'"
                   icon="pi pi-chart-bar"
                   text
                   rounded
                   size="small"
-                  :disabled="!role.trim()"
+                  :disabled="!role.trim() && !hasVacancy"
                   @click="goToEvaluate(c.candidate_id)"
                 />
               </div>
