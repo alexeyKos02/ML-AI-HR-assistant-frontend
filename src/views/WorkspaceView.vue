@@ -9,7 +9,7 @@ import { useCandidates } from '@/composables/useCandidates'
 import { uploadResume, uploadVacancy, getVacancy } from '@/api/hrApi'
 
 const router = useRouter()
-const { candidates, role, refresh } = useCandidates()
+const { candidates, role, effectiveRole, refresh } = useCandidates()
 
 interface UploadItem {
   name: string
@@ -40,6 +40,7 @@ async function onVacancyChange(e: Event) {
   try {
     const res = await uploadVacancy(file)
     vacancyFile.value = { filename: res.filename, length: res.length }
+    effectiveRole.value = res.filename.replace('.pdf', '')
   } catch (e) {
     vacancyError.value = e instanceof Error ? e.message : 'Upload failed'
   } finally {
@@ -105,8 +106,7 @@ function formatDate(iso: string): string {
 }
 
 function goToEvaluate(id: string) {
-  const label = role.value.trim() || vacancyFile.value?.filename?.replace('.pdf', '') || ''
-  router.push({ name: 'evaluate', params: { candidateId: id }, query: label ? { role: label } : {} })
+  router.push({ name: 'evaluate', params: { candidateId: id } })
 }
 
 function goToRanking() {

@@ -10,7 +10,7 @@ import { rankCandidates, getVacancy } from '@/api/hrApi'
 import type { RankResult } from '@/types'
 
 const router = useRouter()
-const { candidates, role, refresh } = useCandidates()
+const { candidates, role, effectiveRole, refresh } = useCandidates()
 
 const loading = ref(true)
 const error = ref('')
@@ -22,20 +22,22 @@ function nameFor(id: string): string {
 }
 
 function goToEvaluate(candidateId: string) {
-  router.push({ name: 'evaluate', params: { candidateId }, query: rankLabel.value ? { role: rankLabel.value } : {} })
+  router.push({ name: 'evaluate', params: { candidateId } })
 }
 
 onMounted(async () => {
   try {
-    const vacancy = await getVacancy()
-    const effectiveRole = role.value || vacancy.vacancy?.filename?.replace('.pdf', '') || ''
-
-    if (!effectiveRole) {
-      router.replace({ name: 'workspace' })
-      return
+    if (!effectiveRole.value) {
+      const vacancy = await getVacancy()
+      const label = vacancy.vacancy?.filename?.replace('.pdf', '') || ''
+      if (!label) {
+        router.replace({ name: 'workspace' })
+        return
+      }
+      effectiveRole.value = label
     }
 
-    rankLabel.value = effectiveRole
+    rankLabel.value = effectiveRole.value
     await refresh()
 
     if (!candidates.value.length) {
@@ -44,7 +46,7 @@ onMounted(async () => {
     }
 
     const ids = candidates.value.map((c) => c.candidate_id)
-    ranked.value = await rankCandidates(effectiveRole, ids)
+    ranked.value = await rankCandidates(effectiveRole.value, ids)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ranking failed'
   } finally {

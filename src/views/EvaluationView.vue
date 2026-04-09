@@ -6,15 +6,14 @@ import Card from 'primevue/card'
 import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useCandidates } from '@/composables/useCandidates'
-import { evaluateCandidate, getVacancy } from '@/api/hrApi'
+import { evaluateCandidate } from '@/api/hrApi'
 import type { EvaluationResult } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
-const { candidates, role } = useCandidates()
+const { candidates, effectiveRole } = useCandidates()
 
 const candidateId = computed(() => route.params.candidateId as string)
-const queryRole = computed(() => route.query.role as string | undefined)
 const filename = computed(
   () => candidates.value.find((c) => c.candidate_id === candidateId.value)?.filename ?? candidateId.value,
 )
@@ -47,27 +46,15 @@ function scoreLabel(score: number): string {
 }
 
 onMounted(async () => {
-  if (!candidateId.value) {
+  if (!candidateId.value || !effectiveRole.value) {
     router.replace({ name: 'workspace' })
     return
   }
 
-  let effectiveRole = role.value || queryRole.value || ''
-  if (!effectiveRole) {
-    const vacancyRes = await getVacancy()
-    if (vacancyRes.vacancy) {
-      effectiveRole = vacancyRes.vacancy.filename.replace('.pdf', '')
-      evalLabel.value = vacancyRes.vacancy.filename
-    } else {
-      router.replace({ name: 'workspace' })
-      return
-    }
-  } else {
-    evalLabel.value = effectiveRole
-  }
+  evalLabel.value = effectiveRole.value
 
   try {
-    evaluation.value = await evaluateCandidate(candidateId.value, effectiveRole)
+    evaluation.value = await evaluateCandidate(candidateId.value, effectiveRole.value)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Evaluation failed'
   } finally {
