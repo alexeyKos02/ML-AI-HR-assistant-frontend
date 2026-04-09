@@ -6,7 +6,7 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import ProgressBar from 'primevue/progressbar'
 import { useCandidates } from '@/composables/useCandidates'
-import { uploadResume } from '@/api/hrApi'
+import { uploadResume, uploadVacancy, getVacancy } from '@/api/hrApi'
 
 const router = useRouter()
 const { candidates, role, refresh } = useCandidates()
@@ -21,9 +21,36 @@ const uploading = ref<UploadItem[]>([])
 const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
+const vacancyFile = ref<{ filename: string; length: number } | null>(null)
+const vacancyInputRef = ref<HTMLInputElement | null>(null)
+const vacancyUploading = ref(false)
+const vacancyError = ref('')
+
+async function loadVacancy() {
+  const res = await getVacancy()
+  vacancyFile.value = res.vacancy
+}
+
+async function onVacancyChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (!input.files?.length) return
+  const file = input.files[0]!
+  vacancyUploading.value = true
+  vacancyError.value = ''
+  try {
+    const res = await uploadVacancy(file)
+    vacancyFile.value = { filename: res.filename, length: res.length }
+  } catch (e) {
+    vacancyError.value = e instanceof Error ? e.message : 'Upload failed'
+  } finally {
+    vacancyUploading.value = false
+    input.value = ''
+  }
+}
+
 const canRank = computed(() => role.value.trim().length > 0 && candidates.value.length >= 1)
 
-onMounted(() => refresh())
+onMounted(() => { refresh(); loadVacancy() })
 
 async function handleFiles(files: FileList | File[]) {
   const pdfs = Array.from(files).filter((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'))
@@ -99,6 +126,25 @@ function goToRanking() {
               class="w-full"
             />
             <span class="field-hint">Used for upload tagging, ranking and evaluation</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Vacancy (optional)</label>
+            <div class="vacancy-upload" @click="vacancyInputRef?.click()">
+              <template v-if="vacancyFile">
+                <i class="pi pi-file-pdf" style="color: #e74c3c" />
+                <span class="vacancy-upload__name">{{ vacancyFile.filename }}</span>
+                <span class="vacancy-upload__hint">{{ vacancyFile.length }} chars · click to replace</span>
+              </template>
+              <template v-else>
+                <i class="pi pi-upload" />
+                <span>Upload vacancy PDF</span>
+              </template>
+              <ProgressBar v-if="vacancyUploading" mode="indeterminate" class="vacancy-upload__bar" />
+              <input ref="vacancyInputRef" type="file" accept=".pdf" hidden @change="onVacancyChange" />
+            </div>
+            <span v-if="vacancyError" class="field-hint" style="color: #dc2626">{{ vacancyError }}</span>
+            <span v-else class="field-hint">GPT will extract skills from the vacancy for evaluation</span>
           </div>
 
           <div class="field">
@@ -258,6 +304,41 @@ function goToRanking() {
   color: var(--text-color-secondary);
   opacity: 0.7;
   margin-top: 5px;
+}
+
+/* Vacancy upload */
+.vacancy-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px dashed var(--surface-border);
+  border-radius: var(--app-radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-color-secondary);
+  transition: border-color 150ms, background 150ms;
+}
+.vacancy-upload:hover {
+  border-color: var(--app-accent);
+  background: rgba(37, 99, 235, 0.04);
+}
+.vacancy-upload__name {
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-color);
+}
+.vacancy-upload__hint {
+  font-size: 11px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.vacancy-upload__bar {
+  width: 60px;
+  flex-shrink: 0;
 }
 
 /* Upload zone */

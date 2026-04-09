@@ -43,6 +43,16 @@ export async function rankCandidates(role: string, candidateIds: string[]): Prom
   })
 }
 
+export async function uploadVacancy(file: File): Promise<{ status: string; filename: string; length: number }> {
+  const form = new FormData()
+  form.append('file', file)
+  return request('/api/vacancy', { method: 'POST', body: form })
+}
+
+export async function getVacancy(): Promise<{ vacancy: { filename: string; length: number } | null }> {
+  return request('/api/vacancy')
+}
+
 export async function healthCheck(): Promise<{ api: string; redis: string }> {
   return request<{ api: string; redis: string }>('/api/health')
 }
