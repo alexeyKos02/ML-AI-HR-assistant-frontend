@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -7,10 +7,9 @@ import InputText from 'primevue/inputtext'
 import ProgressBar from 'primevue/progressbar'
 import { useCandidates } from '@/composables/useCandidates'
 import { uploadResume } from '@/api/hrApi'
-import type { StoredCandidate } from '@/types'
 
 const router = useRouter()
-const { candidates, role, addCandidate, removeCandidate } = useCandidates()
+const { candidates, role, refresh } = useCandidates()
 
 interface UploadItem {
   name: string
@@ -24,6 +23,8 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const canRank = computed(() => role.value.trim().length > 0 && candidates.value.length >= 1)
 
+onMounted(() => refresh())
+
 async function handleFiles(files: FileList | File[]) {
   const pdfs = Array.from(files).filter((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'))
   if (!pdfs.length) return
@@ -35,14 +36,9 @@ async function handleFiles(files: FileList | File[]) {
     pdfs.map(async (file, i) => {
       const item = items[i]!
       try {
-        const res = await uploadResume(file)
-        const candidate: StoredCandidate = {
-          id: res.candidate_id,
-          filename: file.name,
-          uploadedAt: new Date().toISOString(),
-        }
-        addCandidate(candidate)
+        await uploadResume(file, role.value.trim() || 'General')
         uploading.value = uploading.value.filter((u) => u !== item)
+        await refresh()
       } catch (e) {
         item.status = 'error'
         item.error = e instanceof Error ? e.message : 'Upload failed'
@@ -102,6 +98,7 @@ function goToRanking() {
               placeholder="e.g. Frontend Developer"
               class="w-full"
             />
+            <span class="field-hint">Used for upload tagging, ranking and evaluation</span>
           </div>
 
           <div class="field">
@@ -178,11 +175,14 @@ function goToRanking() {
           </div>
 
           <div v-else class="candidate-list">
-            <div v-for="c in candidates" :key="c.id" class="candidate-row">
+            <div v-for="c in candidates" :key="c.candidate_id" class="candidate-row">
               <i class="pi pi-file-pdf candidate-row__icon" />
               <div class="candidate-row__info">
                 <span class="candidate-row__name" :title="c.filename">{{ c.filename }}</span>
-                <span class="candidate-row__date">{{ formatDate(c.uploadedAt) }}</span>
+                <span class="candidate-row__date">
+                  <span class="candidate-row__position">{{ c.position }}</span>
+                  · {{ formatDate(c.uploaded_at) }}
+                </span>
               </div>
               <div class="candidate-row__actions">
                 <Button
@@ -192,16 +192,7 @@ function goToRanking() {
                   rounded
                   size="small"
                   :disabled="!role.trim()"
-                  @click="goToEvaluate(c.id)"
-                />
-                <Button
-                  v-tooltip.top="'Remove'"
-                  icon="pi pi-trash"
-                  text
-                  rounded
-                  size="small"
-                  severity="danger"
-                  @click="removeCandidate(c.id)"
+                  @click="goToEvaluate(c.candidate_id)"
                 />
               </div>
             </div>
@@ -260,6 +251,13 @@ function goToRanking() {
   letter-spacing: 0.6px;
   color: var(--text-color-secondary);
   margin-bottom: 8px;
+}
+.field-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-color-secondary);
+  opacity: 0.7;
+  margin-top: 5px;
 }
 
 /* Upload zone */
@@ -395,6 +393,10 @@ function goToRanking() {
 .candidate-row__date {
   font-size: 11px;
   color: var(--text-color-secondary);
+}
+.candidate-row__position {
+  font-weight: 600;
+  color: var(--app-accent);
 }
 .candidate-row__actions {
   display: flex;

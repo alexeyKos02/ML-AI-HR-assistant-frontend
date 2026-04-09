@@ -1,4 +1,4 @@
-import type { EvaluationResult, RankResult, UploadResponse } from '@/types'
+import type { CandidateInfo, EvaluationResult, RankResult, UploadResponse } from '@/types'
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000'
 
@@ -11,10 +11,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export async function uploadResume(file: File): Promise<UploadResponse> {
+export async function uploadResume(file: File, position: string): Promise<UploadResponse> {
   const form = new FormData()
   form.append('file', file)
+  form.append('position', position)
   return request<UploadResponse>('/api/upload', { method: 'POST', body: form })
+}
+
+export async function getCandidates(): Promise<CandidateInfo[]> {
+  return request<CandidateInfo[]>('/api/candidates')
+}
+
+export async function getPositions(): Promise<string[]> {
+  const res = await request<{ positions: string[] }>('/api/positions')
+  return res.positions
 }
 
 export async function evaluateCandidate(candidateId: string, role: string): Promise<EvaluationResult> {
