@@ -1,7 +1,8 @@
-export interface StoredCandidate {
-  id: string
+export interface CandidateInfo {
+  candidate_id: string
   filename: string
-  uploadedAt: string
+  position: string
+  uploaded_at: string
 }
 
 export interface RankResult {

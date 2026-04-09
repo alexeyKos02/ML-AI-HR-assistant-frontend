@@ -15,7 +15,7 @@ const { candidates, role } = useCandidates()
 
 const candidateId = computed(() => route.params.candidateId as string)
 const filename = computed(
-  () => candidates.value.find((c) => c.id === candidateId.value)?.filename ?? candidateId.value,
+  () => candidates.value.find((c) => c.candidate_id === candidateId.value)?.filename ?? candidateId.value,
 )
 
 const loading = ref(true)

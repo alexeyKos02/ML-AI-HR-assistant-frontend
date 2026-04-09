@@ -10,14 +10,14 @@ import { rankCandidates } from '@/api/hrApi'
 import type { RankResult } from '@/types'
 
 const router = useRouter()
-const { candidates, role } = useCandidates()
+const { candidates, role, refresh } = useCandidates()
 
 const loading = ref(true)
 const error = ref('')
 const ranked = ref<RankResult[]>([])
 
 function nameFor(id: string): string {
-  return candidates.value.find((c) => c.id === id)?.filename ?? id
+  return candidates.value.find((c) => c.candidate_id === id)?.filename ?? id
 }
 
 function goToEvaluate(candidateId: string) {
@@ -25,12 +25,17 @@ function goToEvaluate(candidateId: string) {
 }
 
 onMounted(async () => {
-  if (!role.value || !candidates.value.length) {
+  if (!role.value) {
     router.replace({ name: 'workspace' })
     return
   }
   try {
-    const ids = candidates.value.map((c) => c.id)
+    await refresh()
+    if (!candidates.value.length) {
+      router.replace({ name: 'workspace' })
+      return
+    }
+    const ids = candidates.value.map((c) => c.candidate_id)
     ranked.value = await rankCandidates(role.value, ids)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ranking failed'

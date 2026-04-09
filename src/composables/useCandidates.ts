@@ -1,39 +1,27 @@
 import { ref, watch } from 'vue'
-import type { StoredCandidate } from '@/types'
+import type { CandidateInfo } from '@/types'
+import { getCandidates } from '@/api/hrApi'
 
-const CANDIDATES_KEY = 'hr_candidates'
 const ROLE_KEY = 'hr_role'
 
-function load<T>(key: string, fallback: T): T {
+function loadRole(): string {
   try {
-    const raw = localStorage.getItem(key)
-    return raw ? (JSON.parse(raw) as T) : fallback
+    return localStorage.getItem(ROLE_KEY) ?? ''
   } catch {
-    return fallback
+    return ''
   }
 }
 
-// Module-level singletons — state shared across all component instances
-const candidates = ref<StoredCandidate[]>(load<StoredCandidate[]>(CANDIDATES_KEY, []))
-const role = ref<string>(load<string>(ROLE_KEY, ''))
+// Module-level singletons
+const candidates = ref<CandidateInfo[]>([])
+const role = ref<string>(loadRole())
 
-watch(candidates, (v) => localStorage.setItem(CANDIDATES_KEY, JSON.stringify(v)), { deep: true })
 watch(role, (v) => localStorage.setItem(ROLE_KEY, v))
 
 export function useCandidates() {
-  function addCandidate(candidate: StoredCandidate) {
-    if (!candidates.value.find((c) => c.id === candidate.id)) {
-      candidates.value = [...candidates.value, candidate]
-    }
+  async function refresh() {
+    candidates.value = await getCandidates()
   }
 
-  function removeCandidate(id: string) {
-    candidates.value = candidates.value.filter((c) => c.id !== id)
-  }
-
-  function clearAll() {
-    candidates.value = []
-  }
-
-  return { candidates, role, addCandidate, removeCandidate, clearAll }
+  return { candidates, role, refresh }
 }
