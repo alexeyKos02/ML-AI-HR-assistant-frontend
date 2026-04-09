@@ -6,7 +6,7 @@ import Card from 'primevue/card'
 import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useCandidates } from '@/composables/useCandidates'
-import { rankCandidates } from '@/api/hrApi'
+import { rankCandidates, getVacancy } from '@/api/hrApi'
 import type { RankResult } from '@/types'
 
 const router = useRouter()
@@ -15,6 +15,7 @@ const { candidates, role, refresh } = useCandidates()
 const loading = ref(true)
 const error = ref('')
 const ranked = ref<RankResult[]>([])
+const rankLabel = ref('')
 
 function nameFor(id: string): string {
   return candidates.value.find((c) => c.candidate_id === id)?.filename ?? id
@@ -25,18 +26,25 @@ function goToEvaluate(candidateId: string) {
 }
 
 onMounted(async () => {
-  if (!role.value) {
-    router.replace({ name: 'workspace' })
-    return
-  }
   try {
+    const vacancy = await getVacancy()
+    const effectiveRole = role.value || vacancy.vacancy?.filename?.replace('.pdf', '') || ''
+
+    if (!effectiveRole) {
+      router.replace({ name: 'workspace' })
+      return
+    }
+
+    rankLabel.value = effectiveRole
     await refresh()
+
     if (!candidates.value.length) {
       router.replace({ name: 'workspace' })
       return
     }
+
     const ids = candidates.value.map((c) => c.candidate_id)
-    ranked.value = await rankCandidates(role.value, ids)
+    ranked.value = await rankCandidates(effectiveRole, ids)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ranking failed'
   } finally {
@@ -51,7 +59,7 @@ onMounted(async () => {
       <Button icon="pi pi-arrow-left" text label="Back" @click="router.push({ name: 'workspace' })" />
       <div>
         <h1 class="page-title">Candidate Rankings</h1>
-        <p class="page-subtitle">Role: <strong>{{ role }}</strong></p>
+        <p class="page-subtitle">Role: <strong>{{ rankLabel }}</strong></p>
       </div>
     </div>
 
