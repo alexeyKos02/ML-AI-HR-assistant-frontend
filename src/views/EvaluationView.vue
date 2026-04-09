@@ -46,15 +46,15 @@ function scoreLabel(score: number): string {
 }
 
 onMounted(async () => {
-  if (!candidateId.value || !effectiveRole.value) {
-    router.replace({ name: 'workspace' })
+  if (!candidateId.value) {
+    await router.replace({name: 'workspace'})
     return
   }
 
-  evalLabel.value = effectiveRole.value
+  evalLabel.value = effectiveRole.value || 'Candidate'
 
   try {
-    evaluation.value = await evaluateCandidate(candidateId.value, effectiveRole.value)
+    evaluation.value = await evaluateCandidate(candidateId.value, evalLabel.value)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Evaluation failed'
   } finally {
