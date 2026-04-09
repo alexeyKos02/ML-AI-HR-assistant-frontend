@@ -66,21 +66,21 @@ onMounted(async () => {
       </div>
     </div>
 
-    <Card>
-      <template #content>
-        <div v-if="loading" class="spinner-wrap">
-          <ProgressSpinner />
-          <span class="spinner-label">Ranking candidates…</span>
-        </div>
+<!--    <Card>-->
+<!--      <template #content>-->
+<!--        <div v-if="loading" class="spinner-wrap">-->
+<!--          <ProgressSpinner />-->
+<!--          <span class="spinner-label">Ranking candidates…</span>-->
+<!--        </div>-->
 
-        <div v-else-if="error" class="error-wrap">
-          <i class="pi pi-exclamation-circle error-icon" />
-          <span>{{ error }}</span>
-        </div>
+<!--        <div v-else-if="error" class="error-wrap">-->
+<!--          <i class="pi pi-exclamation-circle error-icon" />-->
+<!--          <span>{{ error }}</span>-->
+<!--        </div>-->
 
-        <div v-else-if="!ranked.length" class="empty-wrap">
-          No results returned from the server.
-        </div>
+<!--        <div v-else-if="!ranked.length" class="empty-wrap">-->
+<!--          No results returned from the server.-->
+<!--        </div>-->
 
 <!--        <div v-else class="rank-list">-->
 <!--          <div-->
@@ -97,8 +97,8 @@ onMounted(async () => {
 <!--            <Button icon="pi pi-arrow-right" text rounded size="small" @click.stop="goToEvaluate(item.candidate_id)" />-->
 <!--          </div>-->
 <!--        </div>-->
-      </template>
-    </Card>
+<!--      </template>-->
+<!--    </Card>-->
   </div>
 </template>
 
