@@ -3,10 +3,11 @@ import type { CandidateInfo } from '@/types'
 import { getCandidates } from '@/api/hrApi'
 
 const ROLE_KEY = 'hr_role'
+const EFFECTIVE_ROLE_KEY = 'hr_effective_role'
 
-function loadRole(): string {
+function loadFromStorage(key: string): string {
   try {
-    return localStorage.getItem(ROLE_KEY) ?? ''
+    return localStorage.getItem(key) ?? ''
   } catch {
     return ''
   }
@@ -14,12 +15,19 @@ function loadRole(): string {
 
 // Module-level singletons
 const candidates = ref<CandidateInfo[]>([])
-const role = ref<string>(loadRole())
-const effectiveRole = ref<string>(loadRole())
+const role = ref<string>(loadFromStorage(ROLE_KEY))
+const effectiveRole = ref<string>(loadFromStorage(EFFECTIVE_ROLE_KEY))
 
 watch(role, (v) => {
   localStorage.setItem(ROLE_KEY, v)
-  if (v) effectiveRole.value = v
+  if (v) {
+    effectiveRole.value = v
+    localStorage.setItem(EFFECTIVE_ROLE_KEY, v)
+  }
+})
+
+watch(effectiveRole, (v) => {
+  localStorage.setItem(EFFECTIVE_ROLE_KEY, v)
 })
 
 export function useCandidates() {
