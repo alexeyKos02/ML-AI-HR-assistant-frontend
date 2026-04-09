@@ -29,6 +29,9 @@ const vacancyError = ref('')
 async function loadVacancy() {
   const res = await getVacancy()
   vacancyFile.value = res.vacancy
+  if (res.vacancy && !role.value) {
+    effectiveRole.value = res.vacancy.filename.replace('.pdf', '')
+  }
 }
 
 async function onVacancyChange(e: Event) {
