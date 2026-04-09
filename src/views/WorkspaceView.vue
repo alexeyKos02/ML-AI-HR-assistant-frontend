@@ -48,7 +48,14 @@ async function onVacancyChange(e: Event) {
   }
 }
 
-const canRank = computed(() => role.value.trim().length > 0 && candidates.value.length >= 1)
+const hasVacancy = computed(() => !!vacancyFile.value)
+const hasRole = computed(() => role.value.trim().length > 0)
+const canRank = computed(() => (hasVacancy.value || hasRole.value) && candidates.value.length >= 1)
+
+function clearVacancy() {
+  vacancyFile.value = null
+  role.value = ''
+}
 
 onMounted(() => { refresh(); loadVacancy() })
 
@@ -118,23 +125,25 @@ function goToRanking() {
           </div>
         </template>
         <template #content>
-          <div class="field">
+          <div v-if="!hasVacancy" class="field">
             <label class="field-label">Role / Position</label>
             <InputText
               v-model="role"
               placeholder="e.g. Frontend Developer"
               class="w-full"
             />
-            <span class="field-hint">Used for upload tagging, ranking and evaluation</span>
           </div>
 
-          <div class="field">
-            <label class="field-label">Vacancy (optional)</label>
+          <div v-if="!hasVacancy && !hasRole" class="divider-or">or</div>
+
+          <div v-if="!hasRole" class="field">
+            <label class="field-label">Vacancy</label>
             <div class="vacancy-upload" @click="vacancyInputRef?.click()">
               <template v-if="vacancyFile">
                 <i class="pi pi-file-pdf" style="color: #e74c3c" />
                 <span class="vacancy-upload__name">{{ vacancyFile.filename }}</span>
-                <span class="vacancy-upload__hint">{{ vacancyFile.length }} chars · click to replace</span>
+                <span class="vacancy-upload__hint">click to replace</span>
+                <Button icon="pi pi-times" text rounded size="small" @click.stop="clearVacancy" />
               </template>
               <template v-else>
                 <i class="pi pi-upload" />
@@ -144,7 +153,6 @@ function goToRanking() {
               <input ref="vacancyInputRef" type="file" accept=".pdf" hidden @change="onVacancyChange" />
             </div>
             <span v-if="vacancyError" class="field-hint" style="color: #dc2626">{{ vacancyError }}</span>
-            <span v-else class="field-hint">GPT will extract skills from the vacancy for evaluation</span>
           </div>
 
           <div class="field">
@@ -304,6 +312,25 @@ function goToRanking() {
   color: var(--text-color-secondary);
   opacity: 0.7;
   margin-top: 5px;
+}
+
+.divider-or {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-color-secondary);
+  opacity: 0.5;
+  margin: -8px 0 12px;
+  gap: 8px;
+}
+.divider-or::before,
+.divider-or::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--surface-border);
 }
 
 /* Vacancy upload */
