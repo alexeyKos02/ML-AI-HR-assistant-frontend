@@ -14,6 +14,7 @@ const router = useRouter()
 const { candidates, role } = useCandidates()
 
 const candidateId = computed(() => route.params.candidateId as string)
+const queryRole = computed(() => route.query.role as string | undefined)
 const filename = computed(
   () => candidates.value.find((c) => c.candidate_id === candidateId.value)?.filename ?? candidateId.value,
 )
@@ -51,7 +52,7 @@ onMounted(async () => {
     return
   }
 
-  let effectiveRole = role.value
+  let effectiveRole = role.value || queryRole.value || ''
   if (!effectiveRole) {
     const vacancyRes = await getVacancy()
     if (vacancyRes.vacancy) {

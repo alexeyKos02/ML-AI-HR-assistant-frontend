@@ -22,7 +22,7 @@ function nameFor(id: string): string {
 }
 
 function goToEvaluate(candidateId: string) {
-  router.push({ name: 'evaluate', params: { candidateId } })
+  router.push({ name: 'evaluate', params: { candidateId }, query: rankLabel.value ? { role: rankLabel.value } : {} })
 }
 
 onMounted(async () => {

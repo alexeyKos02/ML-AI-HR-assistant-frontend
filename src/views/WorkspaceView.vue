@@ -105,7 +105,8 @@ function formatDate(iso: string): string {
 }
 
 function goToEvaluate(id: string) {
-  router.push({ name: 'evaluate', params: { candidateId: id } })
+  const label = role.value.trim() || vacancyFile.value?.filename?.replace('.pdf', '') || ''
+  router.push({ name: 'evaluate', params: { candidateId: id }, query: label ? { role: label } : {} })
 }
 
 function goToRanking() {
