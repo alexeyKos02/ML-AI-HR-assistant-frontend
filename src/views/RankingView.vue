@@ -23,7 +23,7 @@ function nameFor(id: string): string {
 
 function goToEvaluate(candidateId: string) {
   console.log(`number ${candidateId}`)
-  router.push({ name: 'evaluate', params: { candidateId } })
+  // router.push({ name: 'evaluate', params: { candidateId } })
 }
 
 onMounted(async () => {
