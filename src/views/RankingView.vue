@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useCandidates } from '@/composables/useCandidates'
-import { rankCandidates } from '@/api/hrApi'
-import type { RankResult } from '@/types'
+import { rankCandidates, evaluateCandidate } from '@/api/hrApi'
+import type { RankResult, EvaluationResult } from '@/types'
 
 const router = useRouter()
 const { candidates, effectiveRole, activeVacancy, refresh } = useCandidates()
@@ -16,13 +16,44 @@ const loading = ref(true)
 const error = ref('')
 const ranked = ref<RankResult[]>([])
 const rankLabel = ref('')
+const minScore = ref(0)
+const expandedId = ref<string | null>(null)
+const skillsCache = ref<Record<string, EvaluationResult>>({})
+const loadingSkills = ref<string | null>(null)
+
+const filtered = computed(() =>
+  ranked.value.filter(r => r.score >= minScore.value)
+)
 
 function nameFor(id: string): string {
   return candidates.value.find((c) => c.candidate_id === id)?.filename ?? id
 }
 
+function scoreColor(score: number): string {
+  if (score >= 75) return '#22c55e'
+  if (score >= 50) return '#f59e0b'
+  return '#ef4444'
+}
+
+async function toggleExpand(candidateId: string) {
+  if (expandedId.value === candidateId) {
+    expandedId.value = null
+    return
+  }
+  expandedId.value = candidateId
+  if (!skillsCache.value[candidateId]) {
+    loadingSkills.value = candidateId
+    try {
+      skillsCache.value[candidateId] = await evaluateCandidate(
+        candidateId, rankLabel.value, activeVacancy.value?.hash
+      )
+    } finally {
+      loadingSkills.value = null
+    }
+  }
+}
+
 function goToEvaluate(candidateId: string) {
-  console.log(`number ${candidateId}`)
   router.push({ name: 'evaluate', params: { candidateId } })
 }
 
@@ -32,19 +63,16 @@ onMounted(async () => {
       router.replace({ name: 'workspace' })
       return
     }
-
     rankLabel.value = effectiveRole.value
     await refresh()
-
     if (!candidates.value.length) {
       router.replace({ name: 'workspace' })
       return
     }
-
     const ids = candidates.value.map((c) => c.candidate_id)
     ranked.value = await rankCandidates(effectiveRole.value, ids, activeVacancy.value?.hash)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Ranking failed'
+    error.value = e instanceof Error ? e.message : 'Ошибка ранжирования'
   } finally {
     loading.value = false
   }
@@ -77,21 +105,54 @@ onMounted(async () => {
               Сервер не вернул результаты.
             </div>
 
-            <div v-else class="rank-list">
-              <div
-                v-for="(item, i) in ranked"
-                :key="item.candidate_id"
-                class="rank-row"
-                @click="goToEvaluate(item.candidate_id)"
-              >
-                <span class="rank-pos" :class="`rank-pos--${i < 3 ? i + 1 : 'rest'}`">#{{ i + 1 }}</span>
-                <i class="pi pi-file-pdf rank-file-icon" />
-                <span class="rank-name" :title="nameFor(item.candidate_id)">{{ nameFor(item.candidate_id) }}</span>
-                <ProgressBar :value="item.score" class="rank-bar" />
-                <span class="rank-score">{{ item.score.toFixed(1) }}</span>
-                <Button icon="pi pi-arrow-right" text rounded size="small" @click.stop="goToEvaluate(item.candidate_id)" />
+            <template v-else>
+              <!-- Filter -->
+              <div class="filter-bar">
+                <span class="filter-label">Минимальный балл: <strong>{{ minScore }}</strong></span>
+                <input type="range" min="0" max="100" step="5" v-model.number="minScore" class="filter-slider" />
+                <span class="filter-count">{{ filtered.length }} из {{ ranked.length }}</span>
               </div>
-            </div>
+
+              <div class="rank-list">
+                <template v-for="(item, i) in filtered" :key="item.candidate_id">
+                  <!-- Main row -->
+                  <div
+                    class="rank-row"
+                    :class="{ 'rank-row--expanded': expandedId === item.candidate_id }"
+                    @click="toggleExpand(item.candidate_id)"
+                  >
+                    <span class="rank-pos" :class="`rank-pos--${i < 3 ? i + 1 : 'rest'}`">#{{ i + 1 }}</span>
+                    <i class="pi pi-file-pdf rank-file-icon" />
+                    <span class="rank-name" :title="nameFor(item.candidate_id)">{{ nameFor(item.candidate_id) }}</span>
+                    <ProgressBar :value="item.score" class="rank-bar" />
+                    <span class="rank-score" :style="{ color: scoreColor(item.score) }">{{ item.score.toFixed(1) }}</span>
+                    <i
+                      class="pi rank-chevron"
+                      :class="expandedId === item.candidate_id ? 'pi-chevron-up' : 'pi-chevron-down'"
+                    />
+                    <Button icon="pi pi-arrow-right" text rounded size="small" @click.stop="goToEvaluate(item.candidate_id)" />
+                  </div>
+
+                  <!-- Expanded skills -->
+                  <div v-if="expandedId === item.candidate_id" class="skill-expand">
+                    <div v-if="loadingSkills === item.candidate_id" class="skill-expand__loading">
+                      <i class="pi pi-spin pi-spinner" /> Загружаем навыки…
+                    </div>
+                    <div v-else-if="skillsCache[item.candidate_id]" class="skill-expand__grid">
+                      <div
+                        v-for="[skill, score] in Object.entries(skillsCache[item.candidate_id]).sort(([,a],[,b]) => b - a)"
+                        :key="skill"
+                        class="skill-mini"
+                      >
+                        <span class="skill-mini__name">{{ skill }}</span>
+                        <ProgressBar :value="score" class="skill-mini__bar" />
+                        <span class="skill-mini__score" :style="{ color: scoreColor(score) }">{{ score }}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
           </template>
         </Card>
   </div>
@@ -157,6 +218,29 @@ onMounted(async () => {
   flex-direction: column;
   gap: 2px;
 }
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px 16px;
+  border-bottom: 1px solid var(--surface-border);
+  margin-bottom: 8px;
+}
+.filter-label {
+  font-size: 13px;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+}
+.filter-slider {
+  flex: 1;
+  accent-color: var(--app-accent, #10b981);
+}
+.filter-count {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+}
+
 .rank-row {
   display: flex;
   align-items: center;
@@ -168,6 +252,59 @@ onMounted(async () => {
 }
 .rank-row:hover {
   background: rgba(15, 23, 42, 0.04);
+}
+.rank-row--expanded {
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.rank-chevron {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  flex-shrink: 0;
+}
+
+.skill-expand {
+  margin: 0 10px 8px 46px;
+  padding: 12px 16px;
+  background: var(--surface-50, #f8fafc);
+  border-radius: 8px;
+}
+.skill-expand__loading {
+  font-size: 13px;
+  color: var(--text-color-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.skill-expand__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.skill-mini {
+  display: grid;
+  grid-template-columns: 140px 1fr 48px;
+  align-items: center;
+  gap: 10px;
+}
+.skill-mini__name {
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skill-mini__bar {
+  height: 8px;
+}
+:deep(.skill-mini__bar .p-progressbar) {
+  height: 8px;
+}
+.skill-mini__score {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
 }
 
 .rank-pos {

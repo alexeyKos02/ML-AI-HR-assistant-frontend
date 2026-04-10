@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -23,7 +23,7 @@ const uploading = ref<UploadItem[]>([])
 const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-const vacancies = ref<{ hash: string; filename: string }[]>([])
+const vacancies = ref<{ hash: string; filename: string; uploaded_at?: string }[]>([])
 const vacancyInputRef = ref<HTMLInputElement | null>(null)
 const vacancyUploading = ref(false)
 const vacancyError = ref('')
@@ -108,7 +108,29 @@ async function onDeleteCandidate(candidateId: string, e: Event) {
   }
 }
 
-onMounted(() => { refresh(); loadVacancies() })
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+function startPolling() {
+  if (pollTimer) return
+  pollTimer = setInterval(async () => {
+    await refresh()
+    if (!candidates.value.some(c => c.status === 'processing')) {
+      stopPolling()
+    }
+  }, 4000)
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+}
+
+onMounted(async () => {
+  await refresh()
+  await loadVacancies()
+  if (candidates.value.some(c => c.status === 'processing')) startPolling()
+})
+
+onUnmounted(stopPolling)
 
 async function handleFiles(files: FileList | File[]) {
   const pdfs = Array.from(files).filter((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'))
@@ -124,6 +146,7 @@ async function handleFiles(files: FileList | File[]) {
         await uploadResume(file, role.value.trim() || 'General')
         uploading.value = uploading.value.filter((u) => u.id !== id)
         await refresh()
+        startPolling()
       } catch (e) {
         const item = uploading.value.find((u) => u.id === id)
         if (item) {
@@ -216,6 +239,7 @@ function goToRanking() {
               >
                 <i class="pi pi-file-pdf vacancy-item__icon" />
                 <span class="vacancy-item__name" :title="v.filename">{{ v.filename.replace('.pdf', '') }}</span>
+                <span v-if="v.uploaded_at" class="vacancy-item__date">{{ formatDate(v.uploaded_at) }}</span>
                 <Button
                   icon="pi pi-trash"
                   text
@@ -285,12 +309,16 @@ function goToRanking() {
               <span>Кандидаты</span>
               <span class="badge">{{ candidates.length }}</span>
             </div>
-            <Button
-              icon="pi pi-sort-amount-down"
-              label="Ранжировать всех"
-              :disabled="!canRank"
-              @click="goToRanking"
-            />
+            <div class="rank-btn-wrap">
+              <Button
+                icon="pi pi-sort-amount-down"
+                label="Ранжировать всех"
+                :disabled="!canRank"
+                @click="goToRanking"
+              />
+              <span v-if="!hasVacancy && !hasRole" class="rank-hint">Укажите роль или выберите вакансию</span>
+              <span v-else-if="!candidates.length" class="rank-hint">Загрузите хотя бы одно резюме</span>
+            </div>
           </div>
         </template>
         <template #content>
@@ -312,13 +340,27 @@ function goToRanking() {
                   · {{ formatDate(c.uploaded_at) }}
                 </span>
               </div>
+              <span
+                v-if="c.status === 'processing'"
+                class="status-badge status-badge--processing"
+                v-tooltip.top="'Резюме обрабатывается…'"
+              >
+                <i class="pi pi-spin pi-spinner" />
+              </span>
+              <span
+                v-else-if="c.status === 'error'"
+                class="status-badge status-badge--error"
+                v-tooltip.top="'Ошибка обработки'"
+              >
+                <i class="pi pi-exclamation-triangle" />
+              </span>
               <Button
-                v-tooltip.top="hasVacancy || hasRole ? 'Оценить кандидата' : 'Укажите роль или загрузите вакансию'"
+                v-tooltip.top="c.status === 'processing' ? 'Подождите — резюме ещё обрабатывается' : hasVacancy || hasRole ? 'Оценить кандидата' : 'Укажите роль или загрузите вакансию'"
                 icon="pi pi-chart-bar"
                 text
                 rounded
                 size="small"
-                :disabled="!hasVacancy && !hasRole"
+                :disabled="(!hasVacancy && !hasRole) || c.status === 'processing'"
                 @click="goToEvaluate(c.candidate_id)"
               />
               <Button
@@ -427,6 +469,12 @@ function goToRanking() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.vacancy-item__date {
+  font-size: 11px;
+  color: var(--text-color-secondary);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 
 .divider-or {
   display: flex;
@@ -515,8 +563,35 @@ function goToRanking() {
 
 .candidates-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+}
+.rank-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.rank-hint {
+  font-size: 11px;
+  color: var(--text-color-secondary);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.status-badge--processing {
+  color: #f59e0b;
+}
+.status-badge--error {
+  color: #ef4444;
 }
 
 .empty-candidates {

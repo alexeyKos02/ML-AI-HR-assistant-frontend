@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -17,6 +17,14 @@ const candidateId = computed(() => route.params.candidateId as string)
 const filename = computed(
   () => candidates.value.find((c) => c.candidate_id === candidateId.value)?.filename ?? candidateId.value,
 )
+
+const currentIndex = computed(() => candidates.value.findIndex(c => c.candidate_id === candidateId.value))
+const prevCandidate = computed(() => currentIndex.value > 0 ? candidates.value[currentIndex.value - 1] : null)
+const nextCandidate = computed(() => currentIndex.value < candidates.value.length - 1 ? candidates.value[currentIndex.value + 1] : null)
+
+function goToCandidate(id: string) {
+  router.replace({ name: 'evaluate', params: { candidateId: id } })
+}
 
 const loading = ref(true)
 const error = ref('')
@@ -45,22 +53,26 @@ function scoreLabel(score: number): string {
   return 'Слабое совпадение'
 }
 
-onMounted(async () => {
+async function loadEvaluation() {
   if (!candidateId.value) {
-    await router.replace({name: 'workspace'})
+    await router.replace({ name: 'workspace' })
     return
   }
-
-  evalLabel.value = effectiveRole.value || 'Candidate'
-
+  loading.value = true
+  error.value = ''
+  evaluation.value = {}
+  evalLabel.value = effectiveRole.value || 'Кандидат'
   try {
     evaluation.value = await evaluateCandidate(candidateId.value, evalLabel.value, activeVacancy.value?.hash)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Evaluation failed'
+    error.value = e instanceof Error ? e.message : 'Ошибка оценки'
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadEvaluation)
+watch(candidateId, loadEvaluation)
 </script>
 
 <template>
@@ -70,6 +82,23 @@ onMounted(async () => {
       <div class="page-header__info">
         <h1 class="page-title" :title="filename">{{ filename }}</h1>
         <p class="page-subtitle">Роль: <strong>{{ evalLabel }}</strong></p>
+      </div>
+      <div class="page-header__nav">
+        <Button
+          icon="pi pi-chevron-left"
+          text rounded size="small"
+          :disabled="!prevCandidate"
+          v-tooltip.top="prevCandidate?.filename ?? ''"
+          @click="prevCandidate && goToCandidate(prevCandidate.candidate_id)"
+        />
+        <span class="nav-counter">{{ currentIndex + 1 }} / {{ candidates.length }}</span>
+        <Button
+          icon="pi pi-chevron-right"
+          text rounded size="small"
+          :disabled="!nextCandidate"
+          v-tooltip.top="nextCandidate?.filename ?? ''"
+          @click="nextCandidate && goToCandidate(nextCandidate.candidate_id)"
+        />
       </div>
     </div>
 
@@ -153,7 +182,20 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 .page-header__info {
+  flex: 1;
   min-width: 0;
+}
+.page-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.nav-counter {
+  font-size: 13px;
+  color: var(--text-color-secondary);
+  min-width: 44px;
+  text-align: center;
 }
 .page-title {
   margin: 0;

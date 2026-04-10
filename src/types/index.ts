@@ -3,6 +3,7 @@ export interface CandidateInfo {
   filename: string
   position: string
   uploaded_at: string
+  status: 'processing' | 'ready' | 'error'
 }
 
 export interface RankResult {
