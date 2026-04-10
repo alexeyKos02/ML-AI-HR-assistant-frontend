@@ -3,9 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
-import ProgressSpinner from 'primevue/progressspinner'
 import { useCandidates } from '@/composables/useCandidates'
-import { rankCandidates, evaluateCandidate } from '@/api/hrApi'
+import { evaluateCandidate } from '@/api/hrApi'
 import type { RankResult, EvaluationResult, SkillResult } from '@/types'
 
 const router = useRouter()
@@ -19,6 +18,8 @@ const minScore = ref(0)
 const expandedId = ref<string | null>(null)
 const skillsCache = ref<Record<string, EvaluationResult>>({})
 const loadingSkills = ref<string | null>(null)
+const evaluatedCount = ref(0)
+const totalCount = ref(0)
 
 const filtered = computed(() =>
   ranked.value.filter(r => r.score >= minScore.value)
@@ -85,16 +86,25 @@ onMounted(async () => {
     await refresh()
     if (!candidates.value.length) { router.replace({ name: 'workspace' }); return }
     const ids = candidates.value.map((c) => c.candidate_id)
-    ranked.value = await rankCandidates(effectiveRole.value, ids, activeVacancy.value?.hash)
+    totalCount.value = ids.length
+    evaluatedCount.value = 0
 
-    // Предзагружаем навыки для всех кандидатов (из кэша — мгновенно)
-    Promise.all(
-      ranked.value.map(async (item) => {
+    // Оцениваем каждого по отдельности — показываем прогресс
+    await Promise.all(
+      ids.map(async (id) => {
         try {
-          skillsCache.value[item.candidate_id] = await evaluateCandidate(
-            item.candidate_id, rankLabel.value, activeVacancy.value?.hash
+          const skills = await evaluateCandidate(id, rankLabel.value, activeVacancy.value?.hash)
+          skillsCache.value[id] = skills
+          const scores = Object.values(skills).map(v =>
+            (v.required_level ?? 100) > 0
+              ? Math.min((v.candidate_score ?? (v as any).score ?? 0) / (v.required_level ?? 100) * 100, 100)
+              : (v.candidate_score ?? (v as any).score ?? 0)
           )
+          const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0
+          ranked.value.push({ candidate_id: id, score: avg })
+          ranked.value.sort((a, b) => b.score - a.score)
         } catch {}
+        evaluatedCount.value++
       })
     )
   } catch (e) {
@@ -117,9 +127,18 @@ onMounted(async () => {
     </div>
 
     <!-- States -->
-    <div v-if="loading" class="spinner-wrap">
-      <ProgressSpinner />
-      <span class="spinner-label">Ранжируем кандидатов…</span>
+    <div v-if="loading" class="progress-wrap">
+      <div class="progress-header">
+        <span class="progress-label">Оцениваем кандидатов…</span>
+        <span class="progress-counter">{{ evaluatedCount }} / {{ totalCount }}</span>
+      </div>
+      <div class="progress-track">
+        <div
+          class="progress-fill"
+          :style="{ width: totalCount ? (evaluatedCount / totalCount * 100) + '%' : '0%' }"
+        />
+      </div>
+      <span class="progress-hint">Результаты появляются по мере готовности</span>
     </div>
     <div v-else-if="error" class="error-wrap">
       <i class="pi pi-exclamation-circle error-icon" />
@@ -227,15 +246,43 @@ onMounted(async () => {
 .page-title { margin: 0; font-size: 22px; font-weight: 700; }
 .page-subtitle { margin: 4px 0 0; color: var(--text-color-secondary); font-size: 14px; }
 
-.spinner-wrap {
+.progress-wrap {
+  padding: 40px 0 32px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 56px 20px;
+  gap: 12px;
+}
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.progress-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+.progress-counter {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--app-accent, #10b981);
+  font-variant-numeric: tabular-nums;
+}
+.progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-border);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--app-accent, #10b981);
+  transition: width 400ms ease;
+}
+.progress-hint {
+  font-size: 12px;
   color: var(--text-color-secondary);
 }
-.spinner-label { font-size: 14px; }
 
 .error-wrap {
   display: flex;
