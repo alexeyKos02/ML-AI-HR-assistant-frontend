@@ -58,7 +58,47 @@ onMounted(async () => {
 
 <template>
   <div class="ranking-page">
+    <div class="page-header">
+      <Button icon="pi pi-arrow-left" text label="Back" @click="router.push({ name: 'workspace' })" />
+      <div>
+        <h1 class="page-title">Candidate Rankings</h1>
+        <p class="page-subtitle">Role: <strong>{{ rankLabel }}</strong></p>
+      </div>
+    </div>
 
+        <Card>
+          <template #content>
+            <div v-if="loading" class="spinner-wrap">
+              <ProgressSpinner />
+              <span class="spinner-label">Ranking candidates…</span>
+            </div>
+
+            <div v-else-if="error" class="error-wrap">
+              <i class="pi pi-exclamation-circle error-icon" />
+              <span>{{ error }}</span>
+            </div>
+
+            <div v-else-if="!ranked.length" class="empty-wrap">
+              No results returned from the server.
+            </div>
+
+            <div v-else class="rank-list">
+              <div
+                v-for="(item, i) in ranked"
+                :key="item.candidate_id"
+                class="rank-row"
+                @click="goToEvaluate(item.candidate_id)"
+              >
+                <span class="rank-pos" :class="`rank-pos--${i < 3 ? i + 1 : 'rest'}`">#{{ i + 1 }}</span>
+                <i class="pi pi-file-pdf rank-file-icon" />
+                <span class="rank-name" :title="nameFor(item.candidate_id)">{{ nameFor(item.candidate_id) }}</span>
+                <ProgressBar :value="item.score" class="rank-bar" />
+                <span class="rank-score">{{ item.score.toFixed(1) }}</span>
+                <Button icon="pi pi-arrow-right" text rounded size="small" @click.stop="goToEvaluate(item.candidate_id)" />
+              </div>
+            </div>
+          </template>
+        </Card>
   </div>
 </template>
 
