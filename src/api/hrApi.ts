@@ -53,6 +53,14 @@ export async function getVacancies(): Promise<{ vacancies: { hash: string; filen
   return request('/api/vacancies')
 }
 
+export async function deleteVacancy(hash: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`/api/vacancy/${hash}`, { method: 'DELETE' })
+}
+
+export async function deleteCandidate(candidateId: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`/api/candidate/${candidateId}`, { method: 'DELETE' })
+}
+
 export async function healthCheck(): Promise<{ api: string; redis: string }> {
   return request<{ api: string; redis: string }>('/api/health')
 }

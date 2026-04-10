@@ -4,9 +4,8 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
-import Select from 'primevue/select'
 import { useCandidates } from '@/composables/useCandidates'
-import { uploadResume, uploadVacancy, getVacancies } from '@/api/hrApi'
+import { uploadResume, uploadVacancy, getVacancies, deleteVacancy, deleteCandidate } from '@/api/hrApi'
 
 const router = useRouter()
 const { candidates, role, effectiveRole, activeVacancy, refresh } = useCandidates()
@@ -75,6 +74,35 @@ const canRank = computed(() => (hasVacancy.value || hasRole.value) && candidates
 function clearVacancy() {
   activeVacancy.value = null
   effectiveRole.value = role.value
+}
+
+async function onDeleteVacancy(v: { hash: string; filename: string }, e: Event) {
+  e.stopPropagation()
+  try {
+    await deleteVacancy(v.hash)
+    if (activeVacancy.value?.hash === v.hash) {
+      activeVacancy.value = null
+      effectiveRole.value = role.value
+    }
+    await loadVacancies()
+  } catch (err) {
+    vacancyError.value = err instanceof Error ? err.message : 'Delete failed'
+  }
+}
+
+const deletingCandidate = ref<string | null>(null)
+
+async function onDeleteCandidate(candidateId: string, e: Event) {
+  e.stopPropagation()
+  deletingCandidate.value = candidateId
+  try {
+    await deleteCandidate(candidateId)
+    await refresh()
+  } catch (err) {
+    console.error('Delete candidate failed', err)
+  } finally {
+    deletingCandidate.value = null
+  }
 }
 
 onMounted(() => { refresh(); loadVacancies() })
@@ -158,17 +186,8 @@ function goToRanking() {
           <div v-if="!hasRole" class="divider-or">or</div>
 
           <div v-if="!hasRole" class="field">
-            <label class="field-label">Vacancy</label>
-
-            <div class="vacancy-row">
-              <Select
-                :modelValue="activeVacancy"
-                :options="vacancies"
-                optionLabel="filename"
-                placeholder="Select vacancy"
-                class="vacancy-select"
-                @update:modelValue="(v) => selectVacancy(v ?? null)"
-              />
+            <label class="field-label">
+              Vacancy
               <Button
                 icon="pi pi-upload"
                 text
@@ -177,17 +196,32 @@ function goToRanking() {
                 v-tooltip.top="'Upload new vacancy'"
                 @click="vacancyInputRef?.click()"
                 :loading="vacancyUploading"
+                style="margin-left: 4px; height: 20px; width: 20px;"
               />
-              <Button
-                v-if="activeVacancy"
-                icon="pi pi-times"
-                text
-                rounded
-                size="small"
-                severity="danger"
-                @click="clearVacancy"
-              />
+            </label>
+
+            <div v-if="vacancies.length" class="vacancy-list">
+              <div
+                v-for="v in vacancies"
+                :key="v.hash"
+                class="vacancy-item"
+                :class="{ 'vacancy-item--active': activeVacancy?.hash === v.hash }"
+                @click="selectVacancy(v)"
+              >
+                <i class="pi pi-file-pdf vacancy-item__icon" />
+                <span class="vacancy-item__name" :title="v.filename">{{ v.filename.replace('.pdf', '') }}</span>
+                <Button
+                  icon="pi pi-trash"
+                  text
+                  rounded
+                  size="small"
+                  severity="danger"
+                  @click="(e) => onDeleteVacancy(v, e)"
+                />
+              </div>
             </div>
+            <span v-else class="field-hint">No vacancies yet. Upload a PDF.</span>
+
             <input ref="vacancyInputRef" type="file" accept=".pdf" hidden @change="onVacancyChange" />
             <span v-if="vacancyError" class="field-hint" style="color: #dc2626">{{ vacancyError }}</span>
           </div>
@@ -281,6 +315,16 @@ function goToRanking() {
                 :disabled="!hasVacancy && !hasRole"
                 @click="goToEvaluate(c.candidate_id)"
               />
+              <Button
+                icon="pi pi-trash"
+                text
+                rounded
+                size="small"
+                severity="danger"
+                v-tooltip.top="'Delete candidate'"
+                :loading="deletingCandidate === c.candidate_id"
+                @click="(e) => onDeleteCandidate(c.candidate_id, e)"
+              />
             </div>
           </div>
         </template>
@@ -342,13 +386,40 @@ function goToRanking() {
   display: block;
 }
 
-.vacancy-row {
+.vacancy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vacancy-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 120ms, border-color 120ms;
 }
-.vacancy-select {
+.vacancy-item:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+.vacancy-item--active {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: var(--app-accent, #10b981);
+}
+.vacancy-item__icon {
+  color: #e74c3c;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.vacancy-item__name {
   flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .divider-or {
