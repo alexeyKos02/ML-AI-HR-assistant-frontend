@@ -32,13 +32,16 @@ const evaluation = ref<EvaluationResult>({})
 const evalLabel = ref('')
 
 const sortedSkills = computed(() =>
-  Object.entries(evaluation.value).sort(([, a], [, b]) => b.score - a.score),
+  Object.entries(evaluation.value).sort(([, a], [, b]) => b.candidate_score - a.candidate_score),
 )
 
 const overallScore = computed(() => {
   const vals = Object.values(evaluation.value)
   if (!vals.length) return 0
-  return Math.round(vals.reduce((s, v) => s + v.score, 0) / vals.length)
+  const weighted = vals.map(v =>
+    v.required_level > 0 ? Math.min(v.candidate_score / v.required_level * 100, 100) : v.candidate_score
+  )
+  return Math.round(weighted.reduce((s, v) => s + v, 0) / weighted.length)
 })
 
 function scoreColor(score: number): string {
@@ -161,8 +164,10 @@ watch(candidateId, loadEvaluation)
               <span class="skill-name">{{ skill }}</span>
               <div class="skill-right">
                 <div class="skill-bar-row">
-                  <ProgressBar :value="data.score" class="skill-bar" />
-                  <span class="skill-score" :style="{ color: scoreColor(data.score) }">{{ data.score }}%</span>
+                  <ProgressBar :value="data.candidate_score" class="skill-bar" />
+                  <span class="skill-score" :style="{ color: scoreColor(data.candidate_score) }">
+                    {{ data.candidate_score }}<span class="skill-score__req"> / {{ data.required_level }}</span>
+                  </span>
                 </div>
                 <p class="skill-reason">{{ data.reason }}</p>
               </div>
@@ -356,9 +361,15 @@ watch(candidateId, loadEvaluation)
 .skill-score {
   font-size: 14px;
   font-weight: 700;
-  width: 44px;
+  width: 64px;
   text-align: right;
   flex-shrink: 0;
+  white-space: nowrap;
+}
+.skill-score__req {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-color-secondary);
 }
 .skill-reason {
   margin: 0;

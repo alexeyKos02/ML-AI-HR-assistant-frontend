@@ -140,15 +140,17 @@ onMounted(async () => {
                     </div>
                     <div v-else-if="skillsCache[item.candidate_id]" class="skill-expand__grid">
                       <div
-                        v-for="[skill, data] in Object.entries(skillsCache[item.candidate_id] ?? {}).sort(([,a],[,b]) => b.score - a.score)"
+                        v-for="[skill, data] in Object.entries(skillsCache[item.candidate_id] ?? {}).sort(([,a],[,b]) => b.candidate_score - a.candidate_score)"
                         :key="skill"
                         class="skill-mini"
                       >
                         <span class="skill-mini__name">{{ skill }}</span>
                         <div class="skill-mini__right">
                           <div class="skill-mini__bar-row">
-                            <ProgressBar :value="data.score" class="skill-mini__bar" />
-                            <span class="skill-mini__score" :style="{ color: scoreColor(data.score) }">{{ data.score }}%</span>
+                            <ProgressBar :value="data.candidate_score" class="skill-mini__bar" />
+                            <span class="skill-mini__score" :style="{ color: scoreColor(data.candidate_score) }">
+                              {{ data.candidate_score }}<span class="skill-mini__req"> / {{ data.required_level }}</span>
+                            </span>
                           </div>
                           <p class="skill-mini__reason">{{ data.reason }}</p>
                         </div>
@@ -321,9 +323,15 @@ onMounted(async () => {
 .skill-mini__score {
   font-size: 13px;
   font-weight: 700;
-  width: 40px;
+  width: 60px;
   text-align: right;
   flex-shrink: 0;
+  white-space: nowrap;
+}
+.skill-mini__req {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-color-secondary);
 }
 .skill-mini__reason {
   margin: 0;

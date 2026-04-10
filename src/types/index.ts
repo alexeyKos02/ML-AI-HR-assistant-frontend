@@ -12,7 +12,8 @@ export interface RankResult {
 }
 
 export interface SkillResult {
-  score: number
+  required_level: number
+  candidate_score: number
   reason: string
 }
 
