@@ -6,11 +6,11 @@ import Card from 'primevue/card'
 import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useCandidates } from '@/composables/useCandidates'
-import { rankCandidates, getVacancy } from '@/api/hrApi'
+import { rankCandidates } from '@/api/hrApi'
 import type { RankResult } from '@/types'
 
 const router = useRouter()
-const { candidates, effectiveRole, refresh } = useCandidates()
+const { candidates, effectiveRole, activeVacancy, refresh } = useCandidates()
 
 const loading = ref(true)
 const error = ref('')
@@ -29,13 +29,8 @@ function goToEvaluate(candidateId: string) {
 onMounted(async () => {
   try {
     if (!effectiveRole.value) {
-      const vacancy = await getVacancy()
-      const label = vacancy.vacancy?.filename?.replace('.pdf', '') || ''
-      if (!label) {
-        router.replace({ name: 'workspace' })
-        return
-      }
-      effectiveRole.value = label
+      router.replace({ name: 'workspace' })
+      return
     }
 
     rankLabel.value = effectiveRole.value
@@ -47,7 +42,7 @@ onMounted(async () => {
     }
 
     const ids = candidates.value.map((c) => c.candidate_id)
-    ranked.value = await rankCandidates(effectiveRole.value, ids)
+    ranked.value = await rankCandidates(effectiveRole.value, ids, activeVacancy.value?.hash)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ranking failed'
   } finally {

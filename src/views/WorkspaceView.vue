@@ -5,11 +5,12 @@ import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import ProgressBar from 'primevue/progressbar'
+import Select from 'primevue/select'
 import { useCandidates } from '@/composables/useCandidates'
-import { uploadResume, uploadVacancy, getVacancy } from '@/api/hrApi'
+import { uploadResume, uploadVacancy, getVacancies } from '@/api/hrApi'
 
 const router = useRouter()
-const { candidates, role, effectiveRole, refresh } = useCandidates()
+const { candidates, role, effectiveRole, activeVacancy, refresh } = useCandidates()
 
 interface UploadItem {
   name: string
@@ -21,17 +22,30 @@ const uploading = ref<UploadItem[]>([])
 const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-const vacancyFile = ref<{ filename: string; length: number } | null>(null)
+const vacancies = ref<{ hash: string; filename: string }[]>([])
 const vacancyInputRef = ref<HTMLInputElement | null>(null)
 const vacancyUploading = ref(false)
 const vacancyError = ref('')
 
-async function loadVacancy() {
-  const res = await getVacancy()
-  if (res.vacancy) {
-    vacancyFile.value = res.vacancy
+async function loadVacancies() {
+  const res = await getVacancies()
+  vacancies.value = res.vacancies
+  // Если активная вакансия не в списке — сбросить
+  if (activeVacancy.value && !res.vacancies.find(v => v.hash === activeVacancy.value?.hash)) {
+    activeVacancy.value = null
+    effectiveRole.value = role.value
+  }
+  // Если нет активной вакансии и нет роли, и есть вакансии — выбрать первую
+  if (!activeVacancy.value && !role.value && res.vacancies.length) {
+    selectVacancy(res.vacancies[0])
+  }
+}
+
+function selectVacancy(v: { hash: string; filename: string } | null) {
+  activeVacancy.value = v
+  if (v) {
     role.value = ''
-    effectiveRole.value = res.vacancy.filename.replace('.pdf', '')
+    effectiveRole.value = v.filename.replace('.pdf', '')
   }
 }
 
@@ -43,9 +57,9 @@ async function onVacancyChange(e: Event) {
   vacancyError.value = ''
   try {
     const res = await uploadVacancy(file)
-    vacancyFile.value = { filename: res.filename, length: res.length }
-    role.value = ''
-    effectiveRole.value = res.filename.replace('.pdf', '')
+    await loadVacancies()
+    const uploaded = vacancies.value.find(v => v.hash === res.hash)
+    if (uploaded) selectVacancy(uploaded)
   } catch (e) {
     vacancyError.value = e instanceof Error ? e.message : 'Upload failed'
   } finally {
@@ -54,16 +68,16 @@ async function onVacancyChange(e: Event) {
   }
 }
 
-const hasVacancy = computed(() => !!vacancyFile.value)
+const hasVacancy = computed(() => !!activeVacancy.value)
 const hasRole = computed(() => role.value.trim().length > 0)
 const canRank = computed(() => (hasVacancy.value || hasRole.value) && candidates.value.length >= 1)
 
 function clearVacancy() {
-  vacancyFile.value = null
-  role.value = ''
+  activeVacancy.value = null
+  effectiveRole.value = role.value
 }
 
-onMounted(() => { refresh(); loadVacancy() })
+onMounted(() => { refresh(); loadVacancies() })
 
 async function handleFiles(files: FileList | File[]) {
   const pdfs = Array.from(files).filter((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'))
@@ -137,28 +151,44 @@ function goToRanking() {
               v-model="role"
               placeholder="e.g. Frontend Developer"
               class="w-full"
-              @input="vacancyFile = null"
+              @input="clearVacancy"
             />
           </div>
 
-          <div v-if="!hasVacancy && !hasRole" class="divider-or">or</div>
+          <div v-if="!hasRole" class="divider-or">or</div>
 
-          <div class="field">
+          <div v-if="!hasRole" class="field">
             <label class="field-label">Vacancy</label>
-            <div class="vacancy-upload" @click="vacancyInputRef?.click()">
-              <template v-if="vacancyFile">
-                <i class="pi pi-file-pdf" style="color: #e74c3c" />
-                <span class="vacancy-upload__name">{{ vacancyFile.filename }}</span>
-                <span class="vacancy-upload__hint">click to replace</span>
-                <Button icon="pi pi-times" text rounded size="small" @click.stop="clearVacancy" />
-              </template>
-              <template v-else>
-                <i class="pi pi-upload" />
-                <span>Upload vacancy PDF</span>
-              </template>
-              <ProgressBar v-if="vacancyUploading" mode="indeterminate" class="vacancy-upload__bar" />
-              <input ref="vacancyInputRef" type="file" accept=".pdf" hidden @change="onVacancyChange" />
+
+            <div class="vacancy-row">
+              <Select
+                :modelValue="activeVacancy"
+                :options="vacancies"
+                optionLabel="filename"
+                placeholder="Select vacancy"
+                class="vacancy-select"
+                @update:modelValue="selectVacancy"
+              />
+              <Button
+                icon="pi pi-upload"
+                text
+                rounded
+                size="small"
+                v-tooltip.top="'Upload new vacancy'"
+                @click="vacancyInputRef?.click()"
+                :loading="vacancyUploading"
+              />
+              <Button
+                v-if="activeVacancy"
+                icon="pi pi-times"
+                text
+                rounded
+                size="small"
+                severity="danger"
+                @click="clearVacancy"
+              />
             </div>
+            <input ref="vacancyInputRef" type="file" accept=".pdf" hidden @change="onVacancyChange" />
             <span v-if="vacancyError" class="field-hint" style="color: #dc2626">{{ vacancyError }}</span>
           </div>
 
@@ -197,11 +227,7 @@ function goToRanking() {
             >
               <i :class="item.status === 'error' ? 'pi pi-times-circle' : 'pi pi-file-pdf'" />
               <span class="upload-queue__name">{{ item.name }}</span>
-              <ProgressBar
-                v-if="item.status === 'uploading'"
-                mode="indeterminate"
-                class="upload-queue__bar"
-              />
+              <span v-if="item.status === 'uploading'" class="upload-queue__status">uploading…</span>
               <span v-else class="upload-queue__error">{{ item.error }}</span>
             </div>
           </div>
@@ -213,49 +239,48 @@ function goToRanking() {
     <div class="workspace__right">
       <Card>
         <template #title>
-          <div class="panel-title panel-title--spread">
+          <div class="candidates-header">
             <div class="panel-title">
               <i class="pi pi-users" />
               <span>Candidates</span>
-              <span v-if="candidates.length" class="count-badge">{{ candidates.length }}</span>
+              <span class="badge">{{ candidates.length }}</span>
             </div>
             <Button
-              label="Rank All"
               icon="pi pi-sort-amount-down"
-              size="small"
+              label="Rank All"
               :disabled="!canRank"
-              v-tooltip.left="!role.trim() ? 'Enter a role first' : !candidates.length ? 'Upload at least one resume' : ''"
               @click="goToRanking"
             />
           </div>
         </template>
         <template #content>
-          <div v-if="!candidates.length" class="empty-state">
-            <i class="pi pi-inbox empty-state__icon" />
-            <span>Upload resumes to get started</span>
+          <div v-if="!candidates.length" class="empty-candidates">
+            <i class="pi pi-inbox empty-candidates__icon" />
+            <span>No candidates yet. Upload resumes to get started.</span>
           </div>
-
           <div v-else class="candidate-list">
-            <div v-for="c in candidates" :key="c.candidate_id" class="candidate-row">
+            <div
+              v-for="c in candidates"
+              :key="c.candidate_id"
+              class="candidate-row"
+            >
               <i class="pi pi-file-pdf candidate-row__icon" />
               <div class="candidate-row__info">
-                <span class="candidate-row__name" :title="c.filename">{{ c.filename }}</span>
-                <span class="candidate-row__date">
-                  <span class="candidate-row__position">{{ c.position }}</span>
+                <span class="candidate-row__name">{{ c.filename }}</span>
+                <span class="candidate-row__meta">
+                  <span class="candidate-row__pos">{{ c.position }}</span>
                   · {{ formatDate(c.uploaded_at) }}
                 </span>
               </div>
-              <div class="candidate-row__actions">
-                <Button
-                  v-tooltip.top="role.trim() || hasVacancy ? 'Evaluate this candidate' : 'Enter a role or upload a vacancy first'"
-                  icon="pi pi-chart-bar"
-                  text
-                  rounded
-                  size="small"
-                  :disabled="!role.trim() && !hasVacancy"
-                  @click="goToEvaluate(c.candidate_id)"
-                />
-              </div>
+              <Button
+                v-tooltip.top="hasVacancy || hasRole ? 'Evaluate this candidate' : 'Enter a role or upload a vacancy first'"
+                icon="pi pi-chart-bar"
+                text
+                rounded
+                size="small"
+                :disabled="!hasVacancy && !hasRole"
+                @click="goToEvaluate(c.candidate_id)"
+              />
             </div>
           </div>
         </template>
@@ -267,15 +292,14 @@ function goToRanking() {
 <style scoped>
 .workspace {
   display: grid;
-  grid-template-columns: 360px 1fr;
+  grid-template-columns: 340px 1fr;
   gap: 20px;
   align-items: start;
 }
 
-@media (max-width: 820px) {
-  .workspace {
-    grid-template-columns: 1fr;
-  }
+.workspace__left,
+.workspace__right {
+  min-width: 0;
 }
 
 .panel-title {
@@ -285,101 +309,68 @@ function goToRanking() {
   font-size: 15px;
   font-weight: 600;
 }
-.panel-title--spread {
-  justify-content: space-between;
-  width: 100%;
-}
 
-.count-badge {
-  background: var(--app-accent);
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--app-accent, #10b981);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  border-radius: 10px;
-  padding: 1px 7px;
-  min-width: 20px;
-  text-align: center;
 }
 
 .field {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 .field-label {
   display: block;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   color: var(--text-color-secondary);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .field-hint {
+  font-size: 12px;
+  margin-top: 4px;
   display: block;
-  font-size: 11px;
-  color: var(--text-color-secondary);
-  opacity: 0.7;
-  margin-top: 5px;
+}
+
+.vacancy-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vacancy-select {
+  flex: 1;
 }
 
 .divider-or {
   display: flex;
   align-items: center;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
+  gap: 10px;
   color: var(--text-color-secondary);
-  opacity: 0.5;
-  margin: -8px 0 12px;
-  gap: 8px;
+  font-size: 13px;
+  margin: 4px 0 16px;
 }
 .divider-or::before,
 .divider-or::after {
   content: '';
   flex: 1;
-  border-top: 1px solid var(--surface-border);
+  height: 1px;
+  background: var(--surface-border);
 }
 
-/* Vacancy upload */
-.vacancy-upload {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  border: 1px dashed var(--surface-border);
-  border-radius: var(--app-radius-sm);
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-color-secondary);
-  transition: border-color 150ms, background 150ms;
-}
-.vacancy-upload:hover {
-  border-color: var(--app-accent);
-  background: rgba(37, 99, 235, 0.04);
-}
-.vacancy-upload__name {
-  font-weight: 500;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-color);
-}
-.vacancy-upload__hint {
-  font-size: 11px;
-  opacity: 0.6;
-  flex-shrink: 0;
-}
-.vacancy-upload__bar {
-  width: 60px;
-  flex-shrink: 0;
-}
-
-/* Upload zone */
 .upload-zone {
   border: 2px dashed var(--surface-border);
-  border-radius: var(--app-radius-sm);
-  padding: 36px 20px;
+  border-radius: 10px;
+  padding: 28px 16px;
   text-align: center;
   cursor: pointer;
   transition: border-color 150ms, background 150ms;
@@ -390,97 +381,93 @@ function goToRanking() {
 }
 .upload-zone:hover,
 .upload-zone--drag {
-  border-color: var(--app-accent);
-  background: rgba(37, 99, 235, 0.04);
+  border-color: var(--app-accent, #10b981);
+  background: rgba(16, 185, 129, 0.04);
 }
 .upload-zone__icon {
-  font-size: 30px;
+  font-size: 28px;
   color: var(--text-color-secondary);
-  margin-bottom: 4px;
-  transition: color 150ms;
-}
-.upload-zone--drag .upload-zone__icon,
-.upload-zone:hover .upload-zone__icon {
-  color: var(--app-accent);
 }
 .upload-zone__text {
   font-size: 14px;
   color: var(--text-color-secondary);
 }
 .upload-zone__link {
-  color: var(--app-accent);
+  color: var(--app-accent, #10b981);
   font-weight: 600;
 }
 .upload-zone__hint {
   font-size: 12px;
   color: var(--text-color-secondary);
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
-/* Upload queue */
 .upload-queue {
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .upload-queue__item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  background: rgba(37, 99, 235, 0.06);
-  border-radius: 8px;
   font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface-100, #f8fafc);
 }
 .upload-queue__item--error {
-  background: rgba(239, 68, 68, 0.08);
+  background: #fef2f2;
   color: #dc2626;
 }
 .upload-queue__name {
   flex: 1;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.upload-queue__bar {
-  width: 80px;
-  flex-shrink: 0;
+.upload-queue__status {
+  color: var(--text-color-secondary);
+  font-size: 12px;
 }
 .upload-queue__error {
   font-size: 12px;
-  opacity: 0.85;
+  color: #dc2626;
 }
 
-/* Empty state */
-.empty-state {
+.candidates-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.empty-candidates {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 48px 20px;
+  padding: 40px 20px;
   color: var(--text-color-secondary);
   font-size: 14px;
+  text-align: center;
 }
-.empty-state__icon {
-  font-size: 40px;
-  opacity: 0.35;
+.empty-candidates__icon {
+  font-size: 36px;
+  opacity: 0.4;
 }
 
-/* Candidate list */
 .candidate-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: 480px;
-  overflow-y: auto;
 }
 .candidate-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 8px;
-  border-radius: 10px;
+  padding: 10px 6px;
+  border-radius: 8px;
   transition: background 120ms;
 }
 .candidate-row:hover {
@@ -505,17 +492,12 @@ function goToRanking() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.candidate-row__date {
-  font-size: 11px;
+.candidate-row__meta {
+  font-size: 12px;
   color: var(--text-color-secondary);
 }
-.candidate-row__position {
-  font-weight: 600;
-  color: var(--app-accent);
-}
-.candidate-row__actions {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
+.candidate-row__pos {
+  color: var(--app-accent, #10b981);
+  font-weight: 500;
 }
 </style>

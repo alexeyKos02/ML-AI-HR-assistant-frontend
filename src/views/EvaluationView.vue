@@ -11,7 +11,7 @@ import type { EvaluationResult } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
-const { candidates, effectiveRole } = useCandidates()
+const { candidates, effectiveRole, activeVacancy } = useCandidates()
 
 const candidateId = computed(() => route.params.candidateId as string)
 const filename = computed(
@@ -54,7 +54,7 @@ onMounted(async () => {
   evalLabel.value = effectiveRole.value || 'Candidate'
 
   try {
-    evaluation.value = await evaluateCandidate(candidateId.value, evalLabel.value)
+    evaluation.value = await evaluateCandidate(candidateId.value, evalLabel.value, activeVacancy.value?.hash)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Evaluation failed'
   } finally {

@@ -27,30 +27,30 @@ export async function getPositions(): Promise<string[]> {
   return res.positions
 }
 
-export async function evaluateCandidate(candidateId: string, role: string): Promise<EvaluationResult> {
+export async function evaluateCandidate(candidateId: string, role: string, vacancyHash?: string): Promise<EvaluationResult> {
   return request<EvaluationResult>('/api/evaluate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ candidate_id: candidateId, role }),
+    body: JSON.stringify({ candidate_id: candidateId, role, vacancy_hash: vacancyHash }),
   })
 }
 
-export async function rankCandidates(role: string, candidateIds: string[]): Promise<RankResult[]> {
+export async function rankCandidates(role: string, candidateIds: string[], vacancyHash?: string): Promise<RankResult[]> {
   return request<RankResult[]>('/api/rank', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ role, candidate_ids: candidateIds }),
+    body: JSON.stringify({ role, candidate_ids: candidateIds, vacancy_hash: vacancyHash }),
   })
 }
 
-export async function uploadVacancy(file: File): Promise<{ status: string; filename: string; length: number }> {
+export async function uploadVacancy(file: File): Promise<{ status: string; filename: string; length: number; hash: string }> {
   const form = new FormData()
   form.append('file', file)
   return request('/api/vacancy', { method: 'POST', body: form })
 }
 
-export async function getVacancy(): Promise<{ vacancy: { filename: string; length: number } | null }> {
-  return request('/api/vacancy')
+export async function getVacancies(): Promise<{ vacancies: { hash: string; filename: string }[] }> {
+  return request('/api/vacancies')
 }
 
 export async function healthCheck(): Promise<{ api: string; redis: string }> {
