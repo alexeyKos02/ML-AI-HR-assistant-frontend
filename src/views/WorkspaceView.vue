@@ -131,18 +131,19 @@ function goToRanking() {
           </div>
         </template>
         <template #content>
-          <div v-if="!hasVacancy" class="field">
+          <div class="field">
             <label class="field-label">Role / Position</label>
             <InputText
               v-model="role"
               placeholder="e.g. Frontend Developer"
               class="w-full"
+              @input="vacancyFile = null"
             />
           </div>
 
           <div v-if="!hasVacancy && !hasRole" class="divider-or">or</div>
 
-          <div v-if="!hasRole" class="field">
+          <div class="field">
             <label class="field-label">Vacancy</label>
             <div class="vacancy-upload" @click="vacancyInputRef?.click()">
               <template v-if="vacancyFile">
