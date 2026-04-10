@@ -11,10 +11,13 @@ const router = useRouter()
 const { candidates, role, effectiveRole, activeVacancy, refresh } = useCandidates()
 
 interface UploadItem {
+  id: number
   name: string
   status: 'uploading' | 'error'
   error?: string
 }
+
+let _uploadId = 0
 
 const uploading = ref<UploadItem[]>([])
 const isDragging = ref(false)
@@ -111,21 +114,24 @@ async function handleFiles(files: FileList | File[]) {
   const pdfs = Array.from(files).filter((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'))
   if (!pdfs.length) return
 
-  const items: UploadItem[] = pdfs.map((f) => ({ name: f.name, status: 'uploading' }))
+  const items: UploadItem[] = pdfs.map((f) => ({ id: ++_uploadId, name: f.name, status: 'uploading' }))
   uploading.value.push(...items)
 
   await Promise.all(
     pdfs.map(async (file, i) => {
-      const item = items[i]!
+      const id = items[i]!.id
       try {
         await uploadResume(file, role.value.trim() || 'General')
-        uploading.value = uploading.value.filter((u) => u !== item)
+        uploading.value = uploading.value.filter((u) => u.id !== id)
         await refresh()
       } catch (e) {
-        item.status = 'error'
-        item.error = e instanceof Error ? e.message : 'Ошибка загрузки'
+        const item = uploading.value.find((u) => u.id === id)
+        if (item) {
+          item.status = 'error'
+          item.error = e instanceof Error ? e.message : 'Ошибка загрузки'
+        }
         setTimeout(() => {
-          uploading.value = uploading.value.filter((u) => u !== item)
+          uploading.value = uploading.value.filter((u) => u.id !== id)
         }, 4000)
       }
     }),
