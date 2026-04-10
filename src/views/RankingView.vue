@@ -86,6 +86,17 @@ onMounted(async () => {
     if (!candidates.value.length) { router.replace({ name: 'workspace' }); return }
     const ids = candidates.value.map((c) => c.candidate_id)
     ranked.value = await rankCandidates(effectiveRole.value, ids, activeVacancy.value?.hash)
+
+    // Предзагружаем навыки для всех кандидатов (из кэша — мгновенно)
+    Promise.all(
+      ranked.value.map(async (item) => {
+        try {
+          skillsCache.value[item.candidate_id] = await evaluateCandidate(
+            item.candidate_id, rankLabel.value, activeVacancy.value?.hash
+          )
+        } catch {}
+      })
+    )
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ошибка ранжирования'
   } finally {
