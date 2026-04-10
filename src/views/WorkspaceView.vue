@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
-import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import { useCandidates } from '@/composables/useCandidates'
 import { uploadResume, uploadVacancy, getVacancies } from '@/api/hrApi'
@@ -41,7 +40,7 @@ async function loadVacancies() {
   }
 }
 
-function selectVacancy(v: { hash: string; filename: string } | null) {
+function selectVacancy(v: { hash: string; filename: string } | null | undefined) {
   activeVacancy.value = v
   if (v) {
     role.value = ''
