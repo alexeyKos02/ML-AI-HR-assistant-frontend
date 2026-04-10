@@ -141,12 +141,9 @@ onMounted(async () => {
 
             <!-- Info -->
             <div class="rank-info">
-              <div class="rank-info__top">
-                <span class="rank-name" :title="nameFor(item.candidate_id)">{{ nameFor(item.candidate_id) }}</span>
-                <span class="rank-score" :style="{ color: scoreColor(item.score) }">{{ item.score.toFixed(1) }}</span>
-              </div>
+              <span class="rank-name" :title="nameFor(item.candidate_id)">{{ nameFor(item.candidate_id) }}</span>
 
-              <!-- Skill dots (shown once loaded) -->
+              <!-- Skill dots -->
               <div v-if="skillsCache[item.candidate_id]" class="rank-dots">
                 <span
                   v-for="[skill, data] in sortedSkills(item.candidate_id)"
@@ -156,10 +153,13 @@ onMounted(async () => {
                   :title="`${skill}: ${candidateScore(data)} / ${requiredLevel(data)}`"
                 />
               </div>
-              <div v-else class="rank-dots rank-dots--placeholder">
+              <div v-else class="rank-dots">
                 <span v-for="n in 6" :key="n" class="rank-dot rank-dot--empty" />
               </div>
             </div>
+
+            <!-- Score (centered independently) -->
+            <span class="rank-score" :style="{ color: scoreColor(item.score) }">{{ item.score.toFixed(1) }}</span>
 
             <!-- Actions -->
             <div class="rank-actions">
@@ -185,7 +185,7 @@ onMounted(async () => {
                     {{ candidateScore(data) }}<span class="skill-card__req"> / {{ requiredLevel(data) }}</span>
                   </span>
                 </div>
-                <ProgressBar :value="candidateScore(data)" class="skill-card__bar" />
+                <ProgressBar :value="candidateScore(data)" :showValue="false" class="skill-card__bar" />
                 <p class="skill-card__reason">{{ data.reason }}</p>
               </div>
             </div>
@@ -307,12 +307,8 @@ onMounted(async () => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-.rank-info__top {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+  justify-content: center;
+  gap: 7px;
 }
 .rank-name {
   font-size: 15px;
@@ -320,13 +316,13 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
 }
 .rank-score {
   font-size: 22px;
   font-weight: 800;
   flex-shrink: 0;
   line-height: 1;
+  align-self: center;
 }
 
 /* Dots */
