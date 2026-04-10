@@ -28,8 +28,9 @@ const vacancyError = ref('')
 
 async function loadVacancy() {
   const res = await getVacancy()
-  vacancyFile.value = res.vacancy
-  if (res.vacancy && !role.value) {
+  if (res.vacancy) {
+    vacancyFile.value = res.vacancy
+    role.value = ''
     effectiveRole.value = res.vacancy.filename.replace('.pdf', '')
   }
 }
@@ -43,6 +44,7 @@ async function onVacancyChange(e: Event) {
   try {
     const res = await uploadVacancy(file)
     vacancyFile.value = { filename: res.filename, length: res.length }
+    role.value = ''
     effectiveRole.value = res.filename.replace('.pdf', '')
   } catch (e) {
     vacancyError.value = e instanceof Error ? e.message : 'Upload failed'
