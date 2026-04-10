@@ -155,17 +155,18 @@ onMounted(async () => {
               <span class="rank-name" :title="nameFor(item.candidate_id)">{{ nameFor(item.candidate_id) }}</span>
 
               <!-- Skill dots -->
-              <div v-if="skillsCache[item.candidate_id]" class="rank-dots">
+              <div class="rank-dots">
                 <span
-                  v-for="[skill, data] in sortedSkills(item.candidate_id)"
-                  :key="skill"
+                  v-for="n in 6"
+                  :key="n"
                   class="rank-dot"
-                  :style="{ background: scoreColor(fitScore(data)) }"
-                  :title="`${skill}: ${candidateScore(data)} / ${requiredLevel(data)}`"
+                  :style="sortedSkills(item.candidate_id)[n - 1]
+                    ? { background: scoreColor(fitScore(sortedSkills(item.candidate_id)[n - 1]![1])) }
+                    : {}"
+                  :title="sortedSkills(item.candidate_id)[n - 1]
+                    ? `${sortedSkills(item.candidate_id)[n - 1]![0]}: ${candidateScore(sortedSkills(item.candidate_id)[n - 1]![1])} / ${requiredLevel(sortedSkills(item.candidate_id)[n - 1]![1])}`
+                    : ''"
                 />
-              </div>
-              <div v-else class="rank-dots">
-                <span v-for="n in 6" :key="n" class="rank-dot rank-dot--empty" />
               </div>
             </div>
 
@@ -347,7 +348,8 @@ onMounted(async () => {
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
-  transition: transform 200ms;
+  background: var(--surface-border);
+  transition: background 500ms ease;
 }
 .rank-dot--empty {
   background: var(--surface-border);
