@@ -140,7 +140,7 @@ onMounted(async () => {
                     </div>
                     <div v-else-if="skillsCache[item.candidate_id]" class="skill-expand__grid">
                       <div
-                        v-for="[skill, score] in Object.entries(skillsCache[item.candidate_id]).sort(([,a],[,b]) => b - a)"
+                        v-for="[skill, score] in Object.entries(skillsCache[item.candidate_id] ?? {}).sort(([,a],[,b]) => b - a)"
                         :key="skill"
                         class="skill-mini"
                       >
