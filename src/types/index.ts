@@ -11,7 +11,12 @@ export interface RankResult {
   score: number
 }
 
-export type EvaluationResult = Record<string, number>
+export interface SkillResult {
+  score: number
+  reason: string
+}
+
+export type EvaluationResult = Record<string, SkillResult>
 
 export interface UploadResponse {
   status: string

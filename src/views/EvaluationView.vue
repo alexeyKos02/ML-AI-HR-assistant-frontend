@@ -32,13 +32,13 @@ const evaluation = ref<EvaluationResult>({})
 const evalLabel = ref('')
 
 const sortedSkills = computed(() =>
-  Object.entries(evaluation.value).sort(([, a], [, b]) => b - a),
+  Object.entries(evaluation.value).sort(([, a], [, b]) => b.score - a.score),
 )
 
 const overallScore = computed(() => {
   const vals = Object.values(evaluation.value)
   if (!vals.length) return 0
-  return Math.round(vals.reduce((s, v) => s + v, 0) / vals.length)
+  return Math.round(vals.reduce((s, v) => s + v.score, 0) / vals.length)
 })
 
 function scoreColor(score: number): string {
@@ -157,10 +157,15 @@ watch(candidateId, loadEvaluation)
           </div>
 
           <div v-else class="skills">
-            <div v-for="[skill, score] in sortedSkills" :key="skill" class="skill-row">
+            <div v-for="[skill, data] in sortedSkills" :key="skill" class="skill-row">
               <span class="skill-name">{{ skill }}</span>
-              <ProgressBar :value="score" class="skill-bar" />
-              <span class="skill-score" :style="{ color: scoreColor(score) }">{{ score }}%</span>
+              <div class="skill-right">
+                <div class="skill-bar-row">
+                  <ProgressBar :value="data.score" class="skill-bar" />
+                  <span class="skill-score" :style="{ color: scoreColor(data.score) }">{{ data.score }}%</span>
+                </div>
+                <p class="skill-reason">{{ data.reason }}</p>
+              </div>
             </div>
           </div>
         </template>
@@ -314,23 +319,35 @@ watch(candidateId, loadEvaluation)
 .skills {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 .skill-row {
   display: grid;
-  grid-template-columns: 150px 1fr 52px;
-  align-items: center;
+  grid-template-columns: 140px 1fr;
   gap: 14px;
+  align-items: start;
 }
 .skill-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   text-align: right;
+  padding-top: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.skill-right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.skill-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .skill-bar {
+  flex: 1;
   height: 10px;
 }
 :deep(.skill-bar .p-progressbar) {
@@ -339,6 +356,14 @@ watch(candidateId, loadEvaluation)
 .skill-score {
   font-size: 14px;
   font-weight: 700;
+  width: 44px;
   text-align: right;
+  flex-shrink: 0;
+}
+.skill-reason {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  line-height: 1.5;
 }
 </style>

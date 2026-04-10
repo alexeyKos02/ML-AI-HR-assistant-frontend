@@ -140,13 +140,18 @@ onMounted(async () => {
                     </div>
                     <div v-else-if="skillsCache[item.candidate_id]" class="skill-expand__grid">
                       <div
-                        v-for="[skill, score] in Object.entries(skillsCache[item.candidate_id] ?? {}).sort(([,a],[,b]) => b - a)"
+                        v-for="[skill, data] in Object.entries(skillsCache[item.candidate_id] ?? {}).sort(([,a],[,b]) => b.score - a.score)"
                         :key="skill"
                         class="skill-mini"
                       >
                         <span class="skill-mini__name">{{ skill }}</span>
-                        <ProgressBar :value="score" class="skill-mini__bar" />
-                        <span class="skill-mini__score" :style="{ color: scoreColor(score) }">{{ score }}%</span>
+                        <div class="skill-mini__right">
+                          <div class="skill-mini__bar-row">
+                            <ProgressBar :value="data.score" class="skill-mini__bar" />
+                            <span class="skill-mini__score" :style="{ color: scoreColor(data.score) }">{{ data.score }}%</span>
+                          </div>
+                          <p class="skill-mini__reason">{{ data.reason }}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -279,23 +284,35 @@ onMounted(async () => {
 .skill-expand__grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 .skill-mini {
   display: grid;
-  grid-template-columns: 140px 1fr 48px;
-  align-items: center;
+  grid-template-columns: 130px 1fr;
   gap: 10px;
+  align-items: start;
 }
 .skill-mini__name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   text-align: right;
+  padding-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.skill-mini__right {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.skill-mini__bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .skill-mini__bar {
+  flex: 1;
   height: 8px;
 }
 :deep(.skill-mini__bar .p-progressbar) {
@@ -304,7 +321,15 @@ onMounted(async () => {
 .skill-mini__score {
   font-size: 13px;
   font-weight: 700;
+  width: 40px;
   text-align: right;
+  flex-shrink: 0;
+}
+.skill-mini__reason {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-color-secondary);
+  line-height: 1.5;
 }
 
 .rank-pos {
