@@ -254,7 +254,7 @@ onMounted(async () => {
 .rank-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 /* Card */
@@ -262,43 +262,42 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1.5px solid var(--surface-border);
-  background: var(--surface-card);
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--surface-border);
+  background: #fff;
   cursor: pointer;
-  transition: border-color 150ms, box-shadow 150ms, background 150ms;
+  transition: background 120ms, box-shadow 120ms;
 }
 .rank-card:hover {
-  border-color: var(--app-accent, #10b981);
-  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.1);
+  background: var(--surface-50, #f8fafc);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 .rank-card--expanded {
-  border-color: var(--app-accent, #10b981);
-  background: rgba(16, 185, 129, 0.03);
+  background: var(--surface-50, #f8fafc);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
 }
-.rank-card--top1 { border-left: 4px solid #f59e0b; }
-.rank-card--top2 { border-left: 4px solid #9ca3af; }
-.rank-card--top3 { border-left: 4px solid #cd7c2e; }
 
 /* Medal */
 .rank-medal {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 18px;
   flex-shrink: 0;
   background: var(--surface-100, #f1f5f9);
 }
-.rank-medal--1 { background: rgba(245, 158, 11, 0.12); }
-.rank-medal--2 { background: rgba(156, 163, 175, 0.15); }
-.rank-medal--3 { background: rgba(205, 124, 46, 0.12); }
+.rank-medal--1 { background: #fef9ec; }
+.rank-medal--2 { background: #f4f4f5; }
+.rank-medal--3 { background: #fdf4ec; }
 .rank-medal--rest {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-color-secondary);
 }
 
@@ -364,12 +363,12 @@ onMounted(async () => {
 
 /* Skill panel */
 .skill-panel {
-  margin: -2px 0 4px;
+  margin: 0 0 4px;
   padding: 16px;
   background: var(--surface-50, #f8fafc);
-  border: 1.5px solid var(--surface-border);
+  border: 1px solid var(--surface-border);
   border-top: none;
-  border-radius: 0 0 14px 14px;
+  border-radius: 0 0 8px 8px;
 }
 .skill-panel__loading {
   font-size: 13px;
