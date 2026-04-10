@@ -130,9 +130,12 @@ onMounted(async () => {
     <template v-else>
       <!-- Filter -->
       <div class="filter-bar">
-        <span class="filter-label">Минимальный балл: <strong>{{ minScore }}</strong></span>
-        <input type="range" min="0" max="100" step="5" v-model.number="minScore" class="filter-slider" />
-        <span class="filter-count">{{ filtered.length }} из {{ ranked.length }}</span>
+        <span class="filter-label">Порог</span>
+        <div class="filter-track-wrap">
+          <input type="range" min="0" max="100" step="5" v-model.number="minScore" class="filter-slider" />
+        </div>
+        <span class="filter-value">{{ minScore }}</span>
+        <span class="filter-count">{{ filtered.length }} / {{ ranked.length }}</span>
       </div>
 
       <!-- List -->
@@ -255,12 +258,79 @@ onMounted(async () => {
 .filter-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 20px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 10px 14px;
 }
-.filter-label { font-size: 13px; color: var(--text-color-secondary); white-space: nowrap; }
-.filter-slider { flex: 1; accent-color: var(--app-accent, #10b981); }
-.filter-count { font-size: 12px; color: var(--text-color-secondary); white-space: nowrap; }
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.filter-track-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.filter-slider {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--app-accent, #10b981) 0%,
+    var(--app-accent, #10b981) v-bind('minScore + "%"'),
+    var(--surface-border) v-bind('minScore + "%"'),
+    var(--surface-border) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+.filter-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--app-accent, #10b981);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: box-shadow 150ms;
+}
+.filter-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+}
+.filter-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--app-accent, #10b981);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+.filter-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--app-accent, #10b981);
+  min-width: 28px;
+  text-align: center;
+}
+.filter-count {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+  padding-left: 6px;
+  border-left: 1px solid var(--surface-border);
+}
 
 /* List */
 .rank-list {
