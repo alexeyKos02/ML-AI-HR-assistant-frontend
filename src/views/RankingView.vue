@@ -25,8 +25,7 @@ const filtered = computed(() =>
 )
 
 function nameFor(id: string): string {
-  const f = candidates.value.find((c) => c.candidate_id === id)?.filename ?? id
-  return f.replace(/\.pdf$/i, '')
+  return candidates.value.find((c) => c.candidate_id === id)?.filename?.replace(/\.pdf$/i, '') ?? id
 }
 
 function candidateScore(v: SkillResult): number {
@@ -41,13 +40,9 @@ function fitScore(v: SkillResult): number {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 75) return '#22c55e'
-  if (score >= 50) return '#f59e0b'
-  return '#ef4444'
-}
-
-function medalLabel(i: number): string {
-  return ['🥇', '🥈', '🥉'][i] ?? String(i + 1)
+  if (score >= 75) return '#16a34a'
+  if (score >= 50) return '#d97706'
+  return '#dc2626'
 }
 
 function sortedSkills(id: string) {
@@ -96,97 +91,90 @@ onMounted(async () => {
 
 <template>
   <div class="ranking-page">
-    <!-- Header -->
     <div class="page-header">
       <Button icon="pi pi-arrow-left" text label="Назад" @click="router.push({ name: 'workspace' })" />
       <div>
         <h1 class="page-title">Рейтинг кандидатов</h1>
-        <p class="page-subtitle">Роль: <strong>{{ rankLabel }}</strong></p>
+        <p class="page-subtitle">по роли <strong>{{ rankLabel }}</strong></p>
       </div>
     </div>
 
-    <!-- States -->
     <div v-if="loading" class="spinner-wrap">
       <ProgressSpinner />
       <span class="spinner-label">Ранжируем кандидатов…</span>
     </div>
     <div v-else-if="error" class="error-wrap">
-      <i class="pi pi-exclamation-circle error-icon" />
+      <i class="pi pi-exclamation-circle" />
       <span>{{ error }}</span>
     </div>
     <div v-else-if="!ranked.length" class="empty-wrap">Сервер не вернул результаты.</div>
 
     <template v-else>
-      <!-- Filter -->
       <div class="filter-bar">
-        <span class="filter-label">Минимальный балл: <strong>{{ minScore }}</strong></span>
+        <span class="filter-label">Порог: <strong>{{ minScore }}</strong></span>
         <input type="range" min="0" max="100" step="5" v-model.number="minScore" class="filter-slider" />
-        <span class="filter-count">{{ filtered.length }} из {{ ranked.length }}</span>
+        <span class="filter-count">{{ filtered.length }} / {{ ranked.length }}</span>
       </div>
 
-      <!-- List -->
       <div class="rank-list">
         <template v-for="(item, i) in filtered" :key="item.candidate_id">
 
-          <!-- Row -->
           <div
-            class="rank-card"
-            :class="{ 'rank-card--expanded': expandedId === item.candidate_id, [`rank-card--top${i + 1}`]: i < 3 }"
+            class="rank-row"
+            :class="{ 'is-expanded': expandedId === item.candidate_id }"
             @click="toggleExpand(item.candidate_id)"
           >
-            <!-- Medal -->
-            <div class="rank-medal" :class="`rank-medal--${i < 3 ? i + 1 : 'rest'}`">
-              <span>{{ medalLabel(i) }}</span>
-            </div>
+            <!-- Position -->
+            <span class="rank-num" :class="{ 'rank-num--top': i < 3 }">{{ i + 1 }}</span>
 
-            <!-- Info -->
-            <div class="rank-info">
-              <div class="rank-info__top">
-                <span class="rank-name" :title="nameFor(item.candidate_id)">{{ nameFor(item.candidate_id) }}</span>
+            <!-- Main content -->
+            <div class="rank-body">
+              <div class="rank-top">
+                <span class="rank-name">{{ nameFor(item.candidate_id) }}</span>
                 <span class="rank-score" :style="{ color: scoreColor(item.score) }">{{ item.score.toFixed(1) }}</span>
               </div>
 
-              <!-- Skill dots (shown once loaded) -->
-              <div v-if="skillsCache[item.candidate_id]" class="rank-dots">
-                <span
-                  v-for="[skill, data] in sortedSkills(item.candidate_id)"
-                  :key="skill"
-                  class="rank-dot"
-                  :style="{ background: scoreColor(fitScore(data)) }"
-                  :title="`${skill}: ${candidateScore(data)} / ${requiredLevel(data)}`"
-                />
-              </div>
-              <div v-else class="rank-dots rank-dots--placeholder">
-                <span v-for="n in 6" :key="n" class="rank-dot rank-dot--empty" />
+              <!-- Dots -->
+              <div class="dots">
+                <template v-if="skillsCache[item.candidate_id]">
+                  <span
+                    v-for="[skill, data] in sortedSkills(item.candidate_id)"
+                    :key="skill"
+                    class="dot"
+                    :style="{ background: scoreColor(fitScore(data)) }"
+                    :title="`${skill}: ${candidateScore(data)} / ${requiredLevel(data)}`"
+                  />
+                </template>
+                <template v-else>
+                  <span v-for="n in 6" :key="n" class="dot dot--empty" />
+                </template>
               </div>
             </div>
 
-            <!-- Actions -->
-            <div class="rank-actions">
-              <i class="pi rank-chevron" :class="expandedId === item.candidate_id ? 'pi-chevron-up' : 'pi-chevron-down'" />
-              <Button icon="pi pi-arrow-right" text rounded size="small" @click.stop="goToEvaluate(item.candidate_id)" />
+            <!-- Controls -->
+            <div class="rank-controls" @click.stop>
+              <button class="icon-btn" @click="goToEvaluate(item.candidate_id)" title="Открыть оценку">
+                <i class="pi pi-arrow-right" />
+              </button>
+              <i class="pi chevron" :class="expandedId === item.candidate_id ? 'pi-chevron-up' : 'pi-chevron-down'" />
             </div>
           </div>
 
-          <!-- Expanded skills -->
-          <div v-if="expandedId === item.candidate_id" class="skill-panel">
-            <div v-if="loadingSkills === item.candidate_id" class="skill-panel__loading">
-              <i class="pi pi-spin pi-spinner" /> Загружаем навыки…
+          <!-- Skills panel -->
+          <div v-if="expandedId === item.candidate_id" class="skills-panel">
+            <div v-if="loadingSkills === item.candidate_id" class="skills-loading">
+              <i class="pi pi-spin pi-spinner" /> Загружаем…
             </div>
-            <div v-else class="skill-grid">
-              <div
-                v-for="[skill, data] in sortedSkills(item.candidate_id)"
-                :key="skill"
-                class="skill-card"
-              >
-                <div class="skill-card__header">
-                  <span class="skill-card__name">{{ skill }}</span>
-                  <span class="skill-card__score" :style="{ color: scoreColor(fitScore(data)) }">
-                    {{ candidateScore(data) }}<span class="skill-card__req"> / {{ requiredLevel(data) }}</span>
+            <div v-else class="skills-grid">
+              <div v-for="[skill, data] in sortedSkills(item.candidate_id)" :key="skill" class="skill-item">
+                <div class="skill-item__head">
+                  <span class="skill-item__name">{{ skill }}</span>
+                  <span class="skill-item__score" :style="{ color: scoreColor(fitScore(data)) }">
+                    {{ candidateScore(data) }}<span class="skill-item__req">/{{ requiredLevel(data) }}</span>
                   </span>
                 </div>
-                <ProgressBar :value="candidateScore(data)" class="skill-card__bar" />
-                <p class="skill-card__reason">{{ data.reason }}</p>
+                <ProgressBar :value="candidateScore(data)" class="skill-item__bar" />
+                <p class="skill-item__reason">{{ data.reason }}</p>
               </div>
             </div>
           </div>
@@ -199,7 +187,7 @@ onMounted(async () => {
 
 <style scoped>
 .ranking-page {
-  max-width: 820px;
+  max-width: 780px;
   margin: 0 auto;
 }
 
@@ -207,17 +195,25 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 28px;
 }
-.page-title { margin: 0; font-size: 22px; font-weight: 700; }
-.page-subtitle { margin: 4px 0 0; color: var(--text-color-secondary); font-size: 14px; }
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+.page-subtitle {
+  margin: 3px 0 0;
+  color: var(--text-color-secondary);
+  font-size: 13px;
+}
 
 .spinner-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  padding: 56px 20px;
+  padding: 60px 0;
   color: var(--text-color-secondary);
 }
 .spinner-label { font-size: 14px; }
@@ -226,11 +222,10 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 28px;
+  padding: 24px;
   color: #dc2626;
   font-size: 14px;
 }
-.error-icon { font-size: 20px; flex-shrink: 0; }
 
 .empty-wrap {
   padding: 40px;
@@ -243,77 +238,76 @@ onMounted(async () => {
 .filter-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
-.filter-label { font-size: 13px; color: var(--text-color-secondary); white-space: nowrap; }
-.filter-slider { flex: 1; accent-color: var(--app-accent, #10b981); }
-.filter-count { font-size: 12px; color: var(--text-color-secondary); white-space: nowrap; }
+.filter-label {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+}
+.filter-slider {
+  flex: 1;
+  accent-color: var(--app-accent, #10b981);
+  cursor: pointer;
+}
+.filter-count {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+  min-width: 36px;
+  text-align: right;
+}
 
 /* List */
 .rank-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
-/* Card */
-.rank-card {
+/* Row */
+.rank-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1.5px solid var(--surface-border);
-  background: var(--surface-card);
+  gap: 16px;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--surface-border);
   cursor: pointer;
-  transition: border-color 150ms, box-shadow 150ms, background 150ms;
+  transition: background 120ms;
 }
-.rank-card:hover {
-  border-color: var(--app-accent, #10b981);
-  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.1);
-}
-.rank-card--expanded {
-  border-color: var(--app-accent, #10b981);
-  background: rgba(16, 185, 129, 0.03);
-}
-.rank-card--top1 { border-left: 4px solid #f59e0b; }
-.rank-card--top2 { border-left: 4px solid #9ca3af; }
-.rank-card--top3 { border-left: 4px solid #cd7c2e; }
+.rank-row:first-child { border-top: 1px solid var(--surface-border); }
+.rank-row:hover { background: rgba(0,0,0,0.02); }
+.rank-row.is-expanded { background: rgba(0,0,0,0.02); }
 
-/* Medal */
-.rank-medal {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  flex-shrink: 0;
-  background: var(--surface-100, #f1f5f9);
-}
-.rank-medal--1 { background: rgba(245, 158, 11, 0.12); }
-.rank-medal--2 { background: rgba(156, 163, 175, 0.15); }
-.rank-medal--3 { background: rgba(205, 124, 46, 0.12); }
-.rank-medal--rest {
-  font-size: 14px;
-  font-weight: 700;
+/* Position number */
+.rank-num {
+  font-size: 20px;
+  font-weight: 300;
   color: var(--text-color-secondary);
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+  opacity: 0.5;
+  font-variant-numeric: tabular-nums;
+}
+.rank-num--top {
+  opacity: 1;
+  font-weight: 600;
+  color: var(--text-color);
 }
 
-/* Info */
-.rank-info {
+/* Body */
+.rank-body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
-.rank-info__top {
+.rank-top {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 12px;
 }
 .rank-name {
   font-size: 15px;
@@ -324,111 +318,120 @@ onMounted(async () => {
   flex: 1;
 }
 .rank-score {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 20px;
+  font-weight: 700;
   flex-shrink: 0;
-  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Dots */
-.rank-dots {
+.dots {
   display: flex;
-  gap: 5px;
+  gap: 4px;
   align-items: center;
 }
-.rank-dot {
-  width: 10px;
-  height: 10px;
+.dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  transition: transform 200ms;
+  opacity: 0.8;
 }
-.rank-dot--empty {
+.dot--empty {
   background: var(--surface-border);
-}
-.rank-card:hover .rank-dot:not(.rank-dot--empty) {
-  transform: scale(1.2);
+  opacity: 1;
 }
 
-/* Actions */
-.rank-actions {
+/* Controls */
+.rank-controls {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex-shrink: 0;
 }
-.rank-chevron {
-  font-size: 13px;
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
   color: var(--text-color-secondary);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  transition: background 120ms, color 120ms;
+}
+.icon-btn:hover {
+  background: rgba(0,0,0,0.06);
+  color: var(--text-color);
+}
+.chevron {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  padding: 6px;
+  opacity: 0.6;
 }
 
-/* Skill panel */
-.skill-panel {
-  margin: -2px 0 4px;
-  padding: 16px;
-  background: var(--surface-50, #f8fafc);
-  border: 1.5px solid var(--surface-border);
-  border-top: none;
-  border-radius: 0 0 14px 14px;
+/* Skills panel */
+.skills-panel {
+  padding: 16px 12px 20px 56px;
+  border-bottom: 1px solid var(--surface-border);
+  background: rgba(0,0,0,0.015);
 }
-.skill-panel__loading {
+.skills-loading {
   font-size: 13px;
   color: var(--text-color-secondary);
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
-/* Skill grid */
-.skill-grid {
+.skills-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 12px 24px;
 }
 
-.skill-card {
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
-  border-radius: 10px;
-  padding: 12px 14px;
+.skill-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
-.skill-card__header {
+.skill-item__head {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  align-items: baseline;
+  gap: 6px;
 }
-.skill-card__name {
-  font-size: 13px;
+.skill-item__name {
+  font-size: 12px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text-color);
 }
-.skill-card__score {
-  font-size: 14px;
+.skill-item__score {
+  font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
   white-space: nowrap;
 }
-.skill-card__req {
+.skill-item__req {
   font-size: 11px;
   font-weight: 400;
   color: var(--text-color-secondary);
 }
-.skill-card__bar {
-  height: 6px;
+.skill-item__bar {
+  height: 4px;
 }
-:deep(.skill-card__bar .p-progressbar) {
-  height: 6px;
+:deep(.skill-item__bar .p-progressbar) {
+  height: 4px;
+  border-radius: 2px;
 }
-.skill-card__reason {
+.skill-item__reason {
   margin: 0;
   font-size: 11px;
   color: var(--text-color-secondary);
-  line-height: 1.5;
+  line-height: 1.6;
 }
 </style>
