@@ -41,7 +41,7 @@ async function loadVacancies() {
 }
 
 function selectVacancy(v: { hash: string; filename: string } | null | undefined) {
-  activeVacancy.value = v
+  activeVacancy.value = v ?? null
   if (v) {
     role.value = ''
     effectiveRole.value = v.filename.replace('.pdf', '')
