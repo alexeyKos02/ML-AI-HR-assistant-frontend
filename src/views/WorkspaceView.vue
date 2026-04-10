@@ -35,8 +35,9 @@ async function loadVacancies() {
     effectiveRole.value = role.value
   }
   // Если нет активной вакансии и нет роли, и есть вакансии — выбрать первую
-  if (!activeVacancy.value && !role.value && res.vacancies.length) {
-    selectVacancy(res.vacancies[0])
+  if (!activeVacancy.value && !role.value && res.vacancies.length > 0) {
+    const first = res.vacancies[0]!
+    selectVacancy(first)
   }
 }
 
