@@ -54,10 +54,10 @@ onMounted(async () => {
 <template>
   <div class="ranking-page">
     <div class="page-header">
-      <Button icon="pi pi-arrow-left" text label="Back" @click="router.push({ name: 'workspace' })" />
+      <Button icon="pi pi-arrow-left" text label="Назад" @click="router.push({ name: 'workspace' })" />
       <div>
-        <h1 class="page-title">Candidate Rankings</h1>
-        <p class="page-subtitle">Role: <strong>{{ rankLabel }}</strong></p>
+        <h1 class="page-title">Рейтинг кандидатов</h1>
+        <p class="page-subtitle">Роль: <strong>{{ rankLabel }}</strong></p>
       </div>
     </div>
 
@@ -65,7 +65,7 @@ onMounted(async () => {
           <template #content>
             <div v-if="loading" class="spinner-wrap">
               <ProgressSpinner />
-              <span class="spinner-label">Ranking candidates…</span>
+              <span class="spinner-label">Ранжируем кандидатов…</span>
             </div>
 
             <div v-else-if="error" class="error-wrap">
@@ -74,7 +74,7 @@ onMounted(async () => {
             </div>
 
             <div v-else-if="!ranked.length" class="empty-wrap">
-              No results returned from the server.
+              Сервер не вернул результаты.
             </div>
 
             <div v-else class="rank-list">

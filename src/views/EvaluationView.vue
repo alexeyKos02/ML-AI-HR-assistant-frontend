@@ -40,9 +40,9 @@ function scoreColor(score: number): string {
 }
 
 function scoreLabel(score: number): string {
-  if (score >= 75) return 'Strong'
-  if (score >= 50) return 'Moderate'
-  return 'Weak'
+  if (score >= 75) return 'Сильное совпадение'
+  if (score >= 50) return 'Среднее совпадение'
+  return 'Слабое совпадение'
 }
 
 onMounted(async () => {
@@ -66,10 +66,10 @@ onMounted(async () => {
 <template>
   <div class="eval-page">
     <div class="page-header">
-      <Button icon="pi pi-arrow-left" text label="Back" @click="router.back()" />
+      <Button icon="pi pi-arrow-left" text label="Назад" @click="router.back()" />
       <div class="page-header__info">
         <h1 class="page-title" :title="filename">{{ filename }}</h1>
-        <p class="page-subtitle">Role: <strong>{{ evalLabel }}</strong></p>
+        <p class="page-subtitle">Роль: <strong>{{ evalLabel }}</strong></p>
       </div>
     </div>
 
@@ -95,9 +95,9 @@ onMounted(async () => {
               <span class="overall__pct" :style="{ color: scoreColor(overallScore) }">{{ overallScore }}</span>
             </div>
             <div class="overall__meta">
-              <span class="overall__label">Overall Score</span>
+              <span class="overall__label">Общий балл</span>
               <span class="overall__verdict" :style="{ color: scoreColor(overallScore) }">
-                {{ scoreLabel(overallScore) }} match
+                {{ scoreLabel(overallScore) }}
               </span>
             </div>
           </div>
@@ -109,13 +109,13 @@ onMounted(async () => {
         <template #title>
           <div class="section-title">
             <i class="pi pi-chart-bar" />
-            Skill Evaluation
+            Оценка навыков
           </div>
         </template>
         <template #content>
           <div v-if="loading" class="spinner-wrap">
             <ProgressSpinner />
-            <span class="spinner-label">Evaluating candidate…</span>
+            <span class="spinner-label">Оцениваем кандидата…</span>
           </div>
 
           <div v-else-if="error" class="error-wrap">
@@ -124,7 +124,7 @@ onMounted(async () => {
           </div>
 
           <div v-else-if="!sortedSkills.length" class="empty-wrap">
-            No evaluation data returned.
+            Сервер не вернул данные оценки.
           </div>
 
           <div v-else class="skills">

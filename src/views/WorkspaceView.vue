@@ -60,7 +60,7 @@ async function onVacancyChange(e: Event) {
     const uploaded = vacancies.value.find(v => v.hash === res.hash)
     if (uploaded) selectVacancy(uploaded)
   } catch (e) {
-    vacancyError.value = e instanceof Error ? e.message : 'Upload failed'
+    vacancyError.value = e instanceof Error ? e.message : 'Ошибка загрузки'
   } finally {
     vacancyUploading.value = false
     input.value = ''
@@ -86,7 +86,7 @@ async function onDeleteVacancy(v: { hash: string; filename: string }, e: Event) 
     }
     await loadVacancies()
   } catch (err) {
-    vacancyError.value = err instanceof Error ? err.message : 'Delete failed'
+    vacancyError.value = err instanceof Error ? err.message : 'Ошибка удаления'
   }
 }
 
@@ -123,7 +123,7 @@ async function handleFiles(files: FileList | File[]) {
         await refresh()
       } catch (e) {
         item.status = 'error'
-        item.error = e instanceof Error ? e.message : 'Upload failed'
+        item.error = e instanceof Error ? e.message : 'Ошибка загрузки'
         setTimeout(() => {
           uploading.value = uploading.value.filter((u) => u !== item)
         }, 4000)
@@ -169,31 +169,31 @@ function goToRanking() {
         <template #title>
           <div class="panel-title">
             <i class="pi pi-briefcase" />
-            <span>Screening Setup</span>
+            <span>Настройка скрининга</span>
           </div>
         </template>
         <template #content>
           <div class="field">
-            <label class="field-label">Role / Position</label>
+            <label class="field-label">Роль / Должность</label>
             <InputText
               v-model="role"
-              placeholder="e.g. Frontend Developer"
+              placeholder="напр. Frontend Developer"
               class="w-full"
               @input="clearVacancy"
             />
           </div>
 
-          <div v-if="!hasRole" class="divider-or">or</div>
+          <div v-if="!hasRole" class="divider-or">или</div>
 
           <div v-if="!hasRole" class="field">
             <label class="field-label">
-              Vacancy
+              Вакансия
               <Button
                 icon="pi pi-upload"
                 text
                 rounded
                 size="small"
-                v-tooltip.top="'Upload new vacancy'"
+                v-tooltip.top="'Загрузить новую вакансию'"
                 @click="vacancyInputRef?.click()"
                 :loading="vacancyUploading"
                 style="margin-left: 4px; height: 20px; width: 20px;"
@@ -220,14 +220,14 @@ function goToRanking() {
                 />
               </div>
             </div>
-            <span v-else class="field-hint">No vacancies yet. Upload a PDF.</span>
+            <span v-else class="field-hint">Вакансий пока нет. Загрузите PDF.</span>
 
             <input ref="vacancyInputRef" type="file" accept=".pdf" hidden @change="onVacancyChange" />
             <span v-if="vacancyError" class="field-hint" style="color: #dc2626">{{ vacancyError }}</span>
           </div>
 
           <div class="field">
-            <label class="field-label">Upload Resumes</label>
+            <label class="field-label">Загрузить резюме</label>
             <div
               class="upload-zone"
               :class="{ 'upload-zone--drag': isDragging }"
@@ -238,9 +238,9 @@ function goToRanking() {
             >
               <i class="pi pi-cloud-upload upload-zone__icon" />
               <span class="upload-zone__text">
-                Drop PDF files here or <span class="upload-zone__link">browse</span>
+                Перетащите PDF сюда или <span class="upload-zone__link">выберите файл</span>
               </span>
-              <span class="upload-zone__hint">PDF only · multiple files supported</span>
+              <span class="upload-zone__hint">Только PDF · поддерживается несколько файлов</span>
               <input
                 ref="fileInputRef"
                 type="file"
@@ -261,7 +261,7 @@ function goToRanking() {
             >
               <i :class="item.status === 'error' ? 'pi pi-times-circle' : 'pi pi-file-pdf'" />
               <span class="upload-queue__name">{{ item.name }}</span>
-              <span v-if="item.status === 'uploading'" class="upload-queue__status">uploading…</span>
+              <span v-if="item.status === 'uploading'" class="upload-queue__status">загрузка…</span>
               <span v-else class="upload-queue__error">{{ item.error }}</span>
             </div>
           </div>
@@ -276,12 +276,12 @@ function goToRanking() {
           <div class="candidates-header">
             <div class="panel-title">
               <i class="pi pi-users" />
-              <span>Candidates</span>
+              <span>Кандидаты</span>
               <span class="badge">{{ candidates.length }}</span>
             </div>
             <Button
               icon="pi pi-sort-amount-down"
-              label="Rank All"
+              label="Ранжировать всех"
               :disabled="!canRank"
               @click="goToRanking"
             />
@@ -290,7 +290,7 @@ function goToRanking() {
         <template #content>
           <div v-if="!candidates.length" class="empty-candidates">
             <i class="pi pi-inbox empty-candidates__icon" />
-            <span>No candidates yet. Upload resumes to get started.</span>
+            <span>Кандидатов пока нет. Загрузите резюме для начала работы.</span>
           </div>
           <div v-else class="candidate-list">
             <div
@@ -307,7 +307,7 @@ function goToRanking() {
                 </span>
               </div>
               <Button
-                v-tooltip.top="hasVacancy || hasRole ? 'Evaluate this candidate' : 'Enter a role or upload a vacancy first'"
+                v-tooltip.top="hasVacancy || hasRole ? 'Оценить кандидата' : 'Укажите роль или загрузите вакансию'"
                 icon="pi pi-chart-bar"
                 text
                 rounded
@@ -321,7 +321,7 @@ function goToRanking() {
                 rounded
                 size="small"
                 severity="danger"
-                v-tooltip.top="'Delete candidate'"
+                v-tooltip.top="'Удалить кандидата'"
                 :loading="deletingCandidate === c.candidate_id"
                 @click="(e) => onDeleteCandidate(c.candidate_id, e)"
               />

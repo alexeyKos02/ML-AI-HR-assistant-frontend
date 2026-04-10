@@ -8,7 +8,7 @@ import Menubar from 'primevue/menubar'
       <template #start>
         <div class="brand">
           <i class="pi pi-sparkles" />
-          <span class="brand__text">HR AI Screening</span>
+          <span class="brand__text">HR AI Скрининг</span>
         </div>
       </template>
 
