@@ -10,7 +10,7 @@ import { rankCandidates, getVacancy } from '@/api/hrApi'
 import type { RankResult } from '@/types'
 
 const router = useRouter()
-const { candidates, role, effectiveRole, refresh } = useCandidates()
+const { candidates, effectiveRole, refresh } = useCandidates()
 
 const loading = ref(true)
 const error = ref('')
@@ -23,7 +23,7 @@ function nameFor(id: string): string {
 
 function goToEvaluate(candidateId: string) {
   console.log(`number ${candidateId}`)
-  // router.push({ name: 'evaluate', params: { candidateId } })
+  router.push({ name: 'evaluate', params: { candidateId } })
 }
 
 onMounted(async () => {
