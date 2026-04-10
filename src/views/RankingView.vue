@@ -90,6 +90,7 @@ onMounted(async () => {
     evaluatedCount.value = 0
 
     // Оцениваем каждого по отдельности — показываем прогресс
+    const results: RankResult[] = []
     await Promise.all(
       ids.map(async (id) => {
         try {
@@ -101,12 +102,12 @@ onMounted(async () => {
               : (v.candidate_score ?? (v as any).score ?? 0)
           )
           const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0
-          ranked.value.push({ candidate_id: id, score: avg })
-          ranked.value.sort((a, b) => b.score - a.score)
+          results.push({ candidate_id: id, score: avg })
         } catch {}
         evaluatedCount.value++
       })
     )
+    ranked.value = results.sort((a, b) => b.score - a.score)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ошибка ранжирования'
   } finally {
