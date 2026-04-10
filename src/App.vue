@@ -4,18 +4,18 @@ import Menubar from 'primevue/menubar'
 
 <template>
   <div class="app-shell">
-<!--    <Menubar>-->
-<!--      <template #start>-->
-<!--        <div class="brand">-->
-<!--          <i class="pi pi-sparkles" />-->
-<!--          <span class="brand__text">HR AI Screening</span>-->
-<!--        </div>-->
-<!--      </template>-->
+    <Menubar>
+      <template #start>
+        <div class="brand">
+          <i class="pi pi-sparkles" />
+          <span class="brand__text">HR AI Screening</span>
+        </div>
+      </template>
 
-<!--      <template #end>-->
-<!--        <div class="muted">1.0</div>-->
-<!--      </template>-->
-<!--    </Menubar>-->
+      <template #end>
+        <div class="muted">1.0</div>
+      </template>
+    </Menubar>
 
     <main class="app-content">
       <RouterView />
