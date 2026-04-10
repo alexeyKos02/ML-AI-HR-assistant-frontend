@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import type { SkillResult } from '@/types'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -31,16 +32,25 @@ const error = ref('')
 const evaluation = ref<EvaluationResult>({})
 const evalLabel = ref('')
 
+function candidateScore(v: SkillResult): number {
+  return v.candidate_score ?? (v as any).score ?? 0
+}
+function requiredLevel(v: SkillResult): number {
+  return v.required_level ?? 100
+}
+
 const sortedSkills = computed(() =>
-  Object.entries(evaluation.value).sort(([, a], [, b]) => b.candidate_score - a.candidate_score),
+  Object.entries(evaluation.value).sort(([, a], [, b]) => candidateScore(b) - candidateScore(a)),
 )
 
 const overallScore = computed(() => {
   const vals = Object.values(evaluation.value)
   if (!vals.length) return 0
-  const weighted = vals.map(v =>
-    v.required_level > 0 ? Math.min(v.candidate_score / v.required_level * 100, 100) : v.candidate_score
-  )
+  const weighted = vals.map(v => {
+    const req = requiredLevel(v)
+    const cand = candidateScore(v)
+    return req > 0 ? Math.min(cand / req * 100, 100) : cand
+  })
   return Math.round(weighted.reduce((s, v) => s + v, 0) / weighted.length)
 })
 
@@ -164,9 +174,9 @@ watch(candidateId, loadEvaluation)
               <span class="skill-name">{{ skill }}</span>
               <div class="skill-right">
                 <div class="skill-bar-row">
-                  <ProgressBar :value="data.candidate_score" class="skill-bar" />
-                  <span class="skill-score" :style="{ color: scoreColor(data.candidate_score) }">
-                    {{ data.candidate_score }}<span class="skill-score__req"> / {{ data.required_level }}</span>
+                  <ProgressBar :value="candidateScore(data)" class="skill-bar" />
+                  <span class="skill-score" :style="{ color: scoreColor(candidateScore(data)) }">
+                    {{ candidateScore(data) }}<span class="skill-score__req"> / {{ requiredLevel(data) }}</span>
                   </span>
                 </div>
                 <p class="skill-reason">{{ data.reason }}</p>

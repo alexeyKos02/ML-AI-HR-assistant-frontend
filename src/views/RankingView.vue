@@ -7,7 +7,7 @@ import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useCandidates } from '@/composables/useCandidates'
 import { rankCandidates, evaluateCandidate } from '@/api/hrApi'
-import type { RankResult, EvaluationResult } from '@/types'
+import type { RankResult, EvaluationResult, SkillResult } from '@/types'
 
 const router = useRouter()
 const { candidates, effectiveRole, activeVacancy, refresh } = useCandidates()
@@ -27,6 +27,13 @@ const filtered = computed(() =>
 
 function nameFor(id: string): string {
   return candidates.value.find((c) => c.candidate_id === id)?.filename ?? id
+}
+
+function candidateScore(v: SkillResult): number {
+  return v.candidate_score ?? (v as any).score ?? 0
+}
+function requiredLevel(v: SkillResult): number {
+  return v.required_level ?? 100
 }
 
 function scoreColor(score: number): string {
@@ -140,16 +147,16 @@ onMounted(async () => {
                     </div>
                     <div v-else-if="skillsCache[item.candidate_id]" class="skill-expand__grid">
                       <div
-                        v-for="[skill, data] in Object.entries(skillsCache[item.candidate_id] ?? {}).sort(([,a],[,b]) => b.candidate_score - a.candidate_score)"
+                        v-for="[skill, data] in Object.entries(skillsCache[item.candidate_id] ?? {}).sort(([,a],[,b]) => candidateScore(b) - candidateScore(a))"
                         :key="skill"
                         class="skill-mini"
                       >
                         <span class="skill-mini__name">{{ skill }}</span>
                         <div class="skill-mini__right">
                           <div class="skill-mini__bar-row">
-                            <ProgressBar :value="data.candidate_score" class="skill-mini__bar" />
-                            <span class="skill-mini__score" :style="{ color: scoreColor(data.candidate_score) }">
-                              {{ data.candidate_score }}<span class="skill-mini__req"> / {{ data.required_level }}</span>
+                            <ProgressBar :value="candidateScore(data)" class="skill-mini__bar" />
+                            <span class="skill-mini__score" :style="{ color: scoreColor(candidateScore(data)) }">
+                              {{ candidateScore(data) }}<span class="skill-mini__req"> / {{ requiredLevel(data) }}</span>
                             </span>
                           </div>
                           <p class="skill-mini__reason">{{ data.reason }}</p>
