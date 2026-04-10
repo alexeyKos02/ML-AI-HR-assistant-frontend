@@ -174,7 +174,7 @@ watch(candidateId, loadEvaluation)
               <span class="skill-name">{{ skill }}</span>
               <div class="skill-right">
                 <div class="skill-bar-row">
-                  <ProgressBar :value="candidateScore(data)" class="skill-bar" />
+                  <ProgressBar :value="Math.min(Math.round(candidateScore(data) / requiredLevel(data) * 100), 100)" class="skill-bar" />
                   <span class="skill-score" :style="{ color: scoreColor(candidateScore(data)) }">
                     {{ candidateScore(data) }}<span class="skill-score__req"> / {{ requiredLevel(data) }}</span>
                   </span>

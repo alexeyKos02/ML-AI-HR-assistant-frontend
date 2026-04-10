@@ -220,7 +220,7 @@ onMounted(async () => {
                     {{ candidateScore(data) }}<span class="skill-card__req"> / {{ requiredLevel(data) }}</span>
                   </span>
                 </div>
-                <ProgressBar :value="candidateScore(data)" :showValue="false" class="skill-card__bar" />
+                <ProgressBar :value="fitScore(data)" :showValue="false" class="skill-card__bar" />
                 <p class="skill-card__reason">{{ data.reason }}</p>
               </div>
             </div>
