@@ -40,8 +40,8 @@ async function loadVacancies() {
   }
 }
 
-function selectVacancy(v: { hash: string; filename: string } | null | undefined) {
-  activeVacancy.value = v ?? null
+function selectVacancy(v: { hash: string; filename: string } | null) {
+  activeVacancy.value = v
   if (v) {
     role.value = ''
     effectiveRole.value = v.filename.replace('.pdf', '')
@@ -166,7 +166,7 @@ function goToRanking() {
                 optionLabel="filename"
                 placeholder="Select vacancy"
                 class="vacancy-select"
-                @update:modelValue="selectVacancy"
+                @update:modelValue="(v) => selectVacancy(v ?? null)"
               />
               <Button
                 icon="pi pi-upload"
