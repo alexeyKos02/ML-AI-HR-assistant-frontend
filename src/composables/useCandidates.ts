@@ -49,10 +49,19 @@ watch(activeVacancy, (v) => {
 
 export function useCandidates() {
   async function refresh() {
+    const prev = new Set(selectedCandidateIds.value)
     candidates.value = await getCandidates()
-    // Auto-select new candidates (those not yet in selection set)
-    const next = new Set(selectedCandidateIds.value)
-    candidates.value.forEach(c => next.add(c.candidate_id))
+    // Авто-выбираем только новых кандидатов (которых раньше не было)
+    const next = new Set(prev)
+    candidates.value.forEach(c => {
+      if (!prev.has(c.candidate_id) && prev.size > 0) {
+        // новый кандидат — добавляем в выборку
+        next.add(c.candidate_id)
+      } else if (prev.size === 0) {
+        // первая загрузка — выбираем всех
+        next.add(c.candidate_id)
+      }
+    })
     selectedCandidateIds.value = next
   }
 

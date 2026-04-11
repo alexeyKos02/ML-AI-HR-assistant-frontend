@@ -98,11 +98,10 @@ onMounted(async () => {
   try {
     if (!effectiveRole.value) { router.replace({ name: 'workspace' }); return }
     rankLabel.value = effectiveRole.value
-    await refresh()
     if (!candidates.value.length) { router.replace({ name: 'workspace' }); return }
     const ids = candidates.value
       .map((c) => c.candidate_id)
-      .filter((id) => selectedCandidateIds.value.size === 0 || selectedCandidateIds.value.has(id))
+      .filter((id) => selectedCandidateIds.value.has(id))
     totalCount.value = ids.length
     evaluatedCount.value = 0
 
