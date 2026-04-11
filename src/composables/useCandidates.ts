@@ -29,6 +29,7 @@ const role = ref<string>(loadFromStorage(ROLE_KEY))
 const effectiveRole = ref<string>(loadFromStorage(EFFECTIVE_ROLE_KEY))
 const activeVacancy = ref<{ hash: string; filename: string } | null>(loadVacancyFromStorage())
 const selectedCandidateIds = ref<Set<string>>(new Set())
+const seenCandidateIds = ref<Set<string>>(new Set()) // когда-либо загружались
 
 watch(role, (v) => {
   localStorage.setItem(ROLE_KEY, v)
@@ -49,20 +50,19 @@ watch(activeVacancy, (v) => {
 
 export function useCandidates() {
   async function refresh() {
-    const prev = new Set(selectedCandidateIds.value)
     candidates.value = await getCandidates()
-    // Авто-выбираем только новых кандидатов (которых раньше не было)
-    const next = new Set(prev)
+    // Авто-выбираем только тех, кого ещё не видели (новые)
+    const nextSelected = new Set(selectedCandidateIds.value)
+    const nextSeen = new Set(seenCandidateIds.value)
     candidates.value.forEach(c => {
-      if (!prev.has(c.candidate_id) && prev.size > 0) {
-        // новый кандидат — добавляем в выборку
-        next.add(c.candidate_id)
-      } else if (prev.size === 0) {
-        // первая загрузка — выбираем всех
-        next.add(c.candidate_id)
+      if (!nextSeen.has(c.candidate_id)) {
+        nextSelected.add(c.candidate_id) // новый — выбираем автоматически
+        nextSeen.add(c.candidate_id)
       }
+      // уже виденный — не трогаем, пользователь сам решил
     })
-    selectedCandidateIds.value = next
+    selectedCandidateIds.value = nextSelected
+    seenCandidateIds.value = nextSeen
   }
 
   return { candidates, role, effectiveRole, activeVacancy, selectedCandidateIds, refresh }
