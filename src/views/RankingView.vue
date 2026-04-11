@@ -8,7 +8,7 @@ import { evaluateCandidate } from '@/api/hrApi'
 import type { RankResult, EvaluationResult, SkillResult } from '@/types'
 
 const router = useRouter()
-const { candidates, effectiveRole, activeVacancy, selectedCandidateIds, refresh } = useCandidates()
+const { candidates, effectiveRole, activeVacancy, selectedCandidateIds } = useCandidates()
 
 const loading = ref(true)
 const error = ref('')
