@@ -28,6 +28,7 @@ const candidates = ref<CandidateInfo[]>([])
 const role = ref<string>(loadFromStorage(ROLE_KEY))
 const effectiveRole = ref<string>(loadFromStorage(EFFECTIVE_ROLE_KEY))
 const activeVacancy = ref<{ hash: string; filename: string } | null>(loadVacancyFromStorage())
+const selectedCandidateIds = ref<Set<string>>(new Set())
 
 watch(role, (v) => {
   localStorage.setItem(ROLE_KEY, v)
@@ -49,7 +50,11 @@ watch(activeVacancy, (v) => {
 export function useCandidates() {
   async function refresh() {
     candidates.value = await getCandidates()
+    // Auto-select new candidates (those not yet in selection set)
+    const next = new Set(selectedCandidateIds.value)
+    candidates.value.forEach(c => next.add(c.candidate_id))
+    selectedCandidateIds.value = next
   }
 
-  return { candidates, role, effectiveRole, activeVacancy, refresh }
+  return { candidates, role, effectiveRole, activeVacancy, selectedCandidateIds, refresh }
 }

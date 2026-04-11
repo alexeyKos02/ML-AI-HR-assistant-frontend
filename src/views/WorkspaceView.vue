@@ -8,7 +8,25 @@ import { useCandidates } from '@/composables/useCandidates'
 import { uploadResume, uploadVacancy, getVacancies, deleteVacancy, deleteCandidate } from '@/api/hrApi'
 
 const router = useRouter()
-const { candidates, role, effectiveRole, activeVacancy, refresh } = useCandidates()
+const { candidates, role, effectiveRole, activeVacancy, selectedCandidateIds, refresh } = useCandidates()
+
+const allSelected = computed(() => candidates.value.length > 0 && candidates.value.every(c => selectedCandidateIds.value.has(c.candidate_id)))
+const someSelected = computed(() => candidates.value.some(c => selectedCandidateIds.value.has(c.candidate_id)))
+
+function toggleCandidate(id: string) {
+  const next = new Set(selectedCandidateIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedCandidateIds.value = next
+}
+
+function toggleAll() {
+  if (allSelected.value) {
+    selectedCandidateIds.value = new Set()
+  } else {
+    selectedCandidateIds.value = new Set(candidates.value.map(c => c.candidate_id))
+  }
+}
 
 interface QueuedFile {
   id: number
@@ -79,7 +97,7 @@ async function onVacancyChange(e: Event) {
 
 const hasVacancy = computed(() => !!activeVacancy.value)
 const hasRole = computed(() => role.value.trim().length > 0)
-const canRank = computed(() => (hasVacancy.value || hasRole.value) && candidates.value.length >= 1)
+const canRank = computed(() => (hasVacancy.value || hasRole.value) && selectedCandidateIds.value.size >= 1)
 
 function clearVacancy() {
   activeVacancy.value = null
@@ -346,6 +364,14 @@ function goToRanking() {
         <template #title>
           <div class="candidates-header">
             <div class="panel-title">
+              <input
+                type="checkbox"
+                class="select-all-checkbox"
+                :checked="allSelected"
+                :indeterminate="someSelected && !allSelected"
+                @change="toggleAll"
+                v-tooltip.top="allSelected ? 'Снять выбор' : 'Выбрать всех'"
+              />
               <i class="pi pi-users" />
               <span>Кандидаты</span>
               <span class="badge">{{ candidates.length }}</span>
@@ -353,12 +379,12 @@ function goToRanking() {
             <div class="rank-btn-wrap">
               <Button
                 icon="pi pi-sort-amount-down"
-                label="Ранжировать всех"
+                :label="`Ранжировать (${selectedCandidateIds.size})`"
                 :disabled="!canRank"
                 @click="goToRanking"
               />
               <span v-if="!hasVacancy && !hasRole" class="rank-hint">Укажите роль или выберите вакансию</span>
-              <span v-else-if="!candidates.length" class="rank-hint">Загрузите хотя бы одно резюме</span>
+              <span v-else-if="!selectedCandidateIds.size" class="rank-hint">Выберите хотя бы одно резюме</span>
             </div>
           </div>
         </template>
@@ -372,7 +398,15 @@ function goToRanking() {
               v-for="c in candidates"
               :key="c.candidate_id"
               class="candidate-row"
+              :class="{ 'candidate-row--unselected': !selectedCandidateIds.has(c.candidate_id) }"
+              @click="toggleCandidate(c.candidate_id)"
             >
+              <input
+                type="checkbox"
+                class="candidate-checkbox"
+                :checked="selectedCandidateIds.has(c.candidate_id)"
+                @click.stop="toggleCandidate(c.candidate_id)"
+              />
               <i class="pi pi-file-pdf candidate-row__icon" />
               <div class="candidate-row__info">
                 <span class="candidate-row__name">{{ c.filename }}</span>
@@ -402,7 +436,7 @@ function goToRanking() {
                 rounded
                 size="small"
                 :disabled="(!hasVacancy && !hasRole) || c.status === 'processing'"
-                @click="goToEvaluate(c.candidate_id)"
+                @click.stop="goToEvaluate(c.candidate_id)"
               />
               <Button
                 icon="pi pi-trash"
@@ -412,7 +446,7 @@ function goToRanking() {
                 severity="danger"
                 v-tooltip.top="'Удалить кандидата'"
                 :loading="deletingCandidate === c.candidate_id"
-                @click="(e) => onDeleteCandidate(c.candidate_id, e)"
+                @click.stop="(e) => onDeleteCandidate(c.candidate_id, e)"
               />
             </div>
           </div>
@@ -689,6 +723,24 @@ function goToRanking() {
 }
 .candidate-row:hover {
   background: rgba(15, 23, 42, 0.04);
+  cursor: pointer;
+}
+.candidate-row--unselected {
+  opacity: 0.45;
+}
+.candidate-checkbox {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--app-accent, #10b981);
+}
+.select-all-checkbox {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--app-accent, #10b981);
 }
 .candidate-row__icon {
   color: #e74c3c;
