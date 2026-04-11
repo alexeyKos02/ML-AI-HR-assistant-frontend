@@ -255,14 +255,16 @@ function goToRanking() {
           <div v-if="!hasRole" class="field">
             <label class="field-label">
               Вакансия
+              <span class="vacancy-limit">{{ vacancies.length }} / 5</span>
               <Button
                 icon="pi pi-upload"
                 text
                 rounded
                 size="small"
-                v-tooltip.top="'Загрузить новую вакансию'"
-                @click="vacancyInputRef?.click()"
+                v-tooltip.top="vacancies.length >= 5 ? 'Достигнут лимит (5 вакансий). Удалите одну, чтобы добавить новую.' : 'Загрузить новую вакансию'"
+                @click="vacancies.length < 5 && vacancyInputRef?.click()"
                 :loading="vacancyUploading"
+                :disabled="vacancies.length >= 5"
                 style="margin-left: 4px; height: 20px; width: 20px;"
               />
             </label>
@@ -531,6 +533,12 @@ function goToRanking() {
 .vacancy-item--active {
   background: rgba(16, 185, 129, 0.08);
   border-color: var(--app-accent, #10b981);
+}
+.vacancy-limit {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+  margin-left: 4px;
 }
 .vacancy-item__icon {
   color: #e74c3c;
