@@ -20,6 +20,21 @@ const skillsCache = ref<Record<string, EvaluationResult>>({})
 const loadingSkills = ref<string | null>(null)
 const evaluatedCount = ref(0)
 const totalCount = ref(0)
+const expandedReasons = ref<Set<string>>(new Set())
+
+function reasonKey(candidateId: string, skill: string) {
+  return `${candidateId}::${skill}`
+}
+function isReasonExpanded(candidateId: string, skill: string) {
+  return expandedReasons.value.has(reasonKey(candidateId, skill))
+}
+function toggleReason(candidateId: string, skill: string) {
+  const key = reasonKey(candidateId, skill)
+  const next = new Set(expandedReasons.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  expandedReasons.value = next
+}
 
 const filtered = computed(() =>
   ranked.value.filter(r => r.score >= minScore.value)
@@ -221,7 +236,17 @@ onMounted(async () => {
                   </span>
                 </div>
                 <ProgressBar :value="fitScore(data)" :showValue="false" class="skill-card__bar" />
-                <p class="skill-card__reason">{{ data.reason }}</p>
+                <p
+                  class="skill-card__reason"
+                  :class="{ 'skill-card__reason--clamped': !isReasonExpanded(item.candidate_id, skill) }"
+                >{{ data.reason }}</p>
+                <button
+                  v-if="data.reason && data.reason.length > 90"
+                  class="skill-card__toggle"
+                  @click.stop="toggleReason(item.candidate_id, skill)"
+                >
+                  {{ isReasonExpanded(item.candidate_id, skill) ? 'Свернуть' : 'Раскрыть' }}
+                </button>
               </div>
             </div>
           </div>
@@ -510,6 +535,7 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+  overflow: hidden;
 }
 
 .skill-card {
@@ -520,6 +546,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 .skill-card__header {
   display: flex;
@@ -556,5 +584,26 @@ onMounted(async () => {
   font-size: 11px;
   color: var(--text-color-secondary);
   line-height: 1.5;
+  word-break: break-word;
+}
+.skill-card__reason--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.skill-card__toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-accent, #10b981);
+  cursor: pointer;
+  text-align: left;
+  line-height: 1;
+}
+.skill-card__toggle:hover {
+  text-decoration: underline;
 }
 </style>
