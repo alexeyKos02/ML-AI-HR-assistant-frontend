@@ -10,6 +10,12 @@ import { uploadResume, uploadVacancy, getVacancies, deleteVacancy, deleteCandida
 const router = useRouter()
 const { candidates, role, effectiveRole, activeVacancy, refresh } = useCandidates()
 
+interface QueuedFile {
+  id: number
+  file: File
+  name: string
+}
+
 interface UploadItem {
   id: number
   name: string
@@ -19,6 +25,7 @@ interface UploadItem {
 
 let _uploadId = 0
 
+const queue = ref<QueuedFile[]>([])
 const uploading = ref<UploadItem[]>([])
 const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -132,18 +139,30 @@ onMounted(async () => {
 
 onUnmounted(stopPolling)
 
-async function handleFiles(files: FileList | File[]) {
+function addToQueue(files: FileList | File[]) {
   const pdfs = Array.from(files).filter((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'))
   if (!pdfs.length) return
+  const newItems: QueuedFile[] = pdfs.map((f) => ({ id: ++_uploadId, file: f, name: f.name }))
+  queue.value.push(...newItems)
+}
 
-  const items: UploadItem[] = pdfs.map((f) => ({ id: ++_uploadId, name: f.name, status: 'uploading' }))
+function removeFromQueue(id: number) {
+  queue.value = queue.value.filter((q) => q.id !== id)
+}
+
+async function submitQueue() {
+  if (!queue.value.length) return
+  const toUpload = [...queue.value]
+  queue.value = []
+
+  const items: UploadItem[] = toUpload.map((q) => ({ id: q.id, name: q.name, status: 'uploading' }))
   uploading.value.push(...items)
 
   await Promise.all(
-    pdfs.map(async (file, i) => {
-      const id = items[i]!.id
+    toUpload.map(async (queued) => {
+      const id = queued.id
       try {
-        await uploadResume(file, role.value.trim() || 'General')
+        await uploadResume(queued.file, role.value.trim() || 'General')
         uploading.value = uploading.value.filter((u) => u.id !== id)
         await refresh()
         startPolling()
@@ -163,12 +182,12 @@ async function handleFiles(files: FileList | File[]) {
 
 function onDrop(e: DragEvent) {
   isDragging.value = false
-  if (e.dataTransfer?.files) handleFiles(e.dataTransfer.files)
+  if (e.dataTransfer?.files) addToQueue(e.dataTransfer.files)
 }
 
 function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
-  if (input.files) handleFiles(input.files)
+  if (input.files) addToQueue(input.files)
   input.value = ''
 }
 
@@ -282,14 +301,36 @@ function goToRanking() {
             </div>
           </div>
 
+          <!-- Очередь: файлы выбраны, но ещё не загружены -->
+          <div v-if="queue.length" class="upload-queue">
+            <div
+              v-for="item in queue"
+              :key="item.id"
+              class="upload-queue__item upload-queue__item--queued"
+            >
+              <i class="pi pi-file-pdf" />
+              <span class="upload-queue__name">{{ item.name }}</span>
+              <button class="upload-queue__remove" @click="removeFromQueue(item.id)" title="Убрать">
+                <i class="pi pi-times" />
+              </button>
+            </div>
+            <Button
+              label="Загрузить"
+              icon="pi pi-upload"
+              class="upload-submit-btn"
+              @click="submitQueue"
+            />
+          </div>
+
+          <!-- Прогресс загрузки -->
           <div v-if="uploading.length" class="upload-queue">
             <div
               v-for="item in uploading"
-              :key="item.name"
+              :key="item.id"
               class="upload-queue__item"
               :class="{ 'upload-queue__item--error': item.status === 'error' }"
             >
-              <i :class="item.status === 'error' ? 'pi pi-times-circle' : 'pi pi-file-pdf'" />
+              <i :class="item.status === 'error' ? 'pi pi-times-circle' : 'pi pi-spin pi-spinner'" />
               <span class="upload-queue__name">{{ item.name }}</span>
               <span v-if="item.status === 'uploading'" class="upload-queue__status">загрузка…</span>
               <span v-else class="upload-queue__error">{{ item.error }}</span>
@@ -542,9 +583,33 @@ function goToRanking() {
   border-radius: 8px;
   background: var(--surface-100, #f8fafc);
 }
+.upload-queue__item--queued {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
 .upload-queue__item--error {
   background: #fef2f2;
   color: #dc2626;
+}
+.upload-queue__remove {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: var(--text-color-secondary);
+  font-size: 11px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+.upload-queue__remove:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+.upload-submit-btn {
+  width: 100%;
+  margin-top: 4px;
 }
 .upload-queue__name {
   flex: 1;
