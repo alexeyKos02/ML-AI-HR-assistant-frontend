@@ -232,9 +232,12 @@ onMounted(async () => {
               >
                 <div class="skill-card__header">
                   <span class="skill-card__name">{{ skill }}</span>
-                  <span class="skill-card__score" :style="{ color: scoreColor(fitScore(data)) }">
-                    {{ candidateScore(data) }}<span class="skill-card__req"> / {{ requiredLevel(data) }}</span>
-                  </span>
+                  <div class="skill-card__score-wrap">
+                    <span class="skill-overskill" v-if="candidateScore(data) > requiredLevel(data)">↑ Выше нормы</span>
+                    <span class="skill-card__score" :style="{ color: scoreColor(fitScore(data)) }">
+                      {{ candidateScore(data) }}<span class="skill-card__req"> / {{ requiredLevel(data) }}</span>
+                    </span>
+                  </div>
                 </div>
                 <ProgressBar :value="fitScore(data)" :showValue="false" class="skill-card__bar" />
                 <p
@@ -563,10 +566,25 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.skill-card__score-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
 .skill-card__score {
   font-size: 14px;
   font-weight: 700;
-  flex-shrink: 0;
+  white-space: nowrap;
+}
+.skill-overskill {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 1px 5px;
+  border-radius: 4px;
   white-space: nowrap;
 }
 .skill-card__req {

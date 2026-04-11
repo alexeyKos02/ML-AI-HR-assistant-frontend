@@ -175,9 +175,12 @@ watch(candidateId, loadEvaluation)
               <div class="skill-right">
                 <div class="skill-bar-row">
                   <ProgressBar :value="Math.min(Math.round(candidateScore(data) / requiredLevel(data) * 100), 100)" class="skill-bar" />
-                  <span class="skill-score" :style="{ color: scoreColor(candidateScore(data)) }">
-                    {{ candidateScore(data) }}<span class="skill-score__req"> / {{ requiredLevel(data) }}</span>
-                  </span>
+                  <div class="skill-score-wrap">
+                    <span v-if="candidateScore(data) > requiredLevel(data)" class="skill-overskill">↑ Выше нормы</span>
+                    <span class="skill-score" :style="{ color: scoreColor(candidateScore(data)) }">
+                      {{ candidateScore(data) }}<span class="skill-score__req"> / {{ requiredLevel(data) }}</span>
+                    </span>
+                  </div>
                 </div>
                 <p class="skill-reason">{{ data.reason }}</p>
               </div>
@@ -368,10 +371,25 @@ watch(candidateId, loadEvaluation)
 :deep(.skill-bar .p-progressbar) {
   height: 10px;
 }
+.skill-score-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.skill-overskill {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
 .skill-score {
   font-size: 14px;
   font-weight: 700;
-  width: 64px;
   text-align: right;
   flex-shrink: 0;
   white-space: nowrap;
