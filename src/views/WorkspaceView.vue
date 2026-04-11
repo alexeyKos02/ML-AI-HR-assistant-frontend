@@ -97,7 +97,8 @@ async function onVacancyChange(e: Event) {
 
 const hasVacancy = computed(() => !!activeVacancy.value)
 const hasRole = computed(() => role.value.trim().length > 0)
-const canRank = computed(() => (hasVacancy.value || hasRole.value) && selectedCandidateIds.value.size >= 1)
+const selectedCount = computed(() => candidates.value.filter(c => selectedCandidateIds.value.has(c.candidate_id)).length)
+const canRank = computed(() => (hasVacancy.value || hasRole.value) && selectedCount.value >= 1)
 
 function clearVacancy() {
   activeVacancy.value = null
@@ -379,7 +380,7 @@ function goToRanking() {
             <div class="rank-btn-wrap">
               <Button
                 icon="pi pi-sort-amount-down"
-                :label="`Ранжировать (${selectedCandidateIds.size})`"
+                :label="`Ранжировать (${selectedCount})`"
                 :disabled="!canRank"
                 @click="goToRanking"
               />
